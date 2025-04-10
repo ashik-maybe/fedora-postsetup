@@ -23,6 +23,23 @@ repo_exists() {
 }
 
 # ------------------------
+# Ask Yes/No Question
+# ------------------------
+
+ask_yes_no() {
+    local question="$1"
+    while true; do
+        echo -e "${YELLOW}$question (y/n): ${RESET}"
+        read -r response
+        case "$response" in
+            [Yy]* ) return 0 ;;  # User answered "yes"
+            [Nn]* ) return 1 ;;  # User answered "no"
+            * ) echo -e "${RED}Please answer 'y' for yes or 'n' for no.${RESET}" ;;
+        esac
+    done
+}
+
+# ------------------------
 # Run command safely
 # ------------------------
 
@@ -100,8 +117,9 @@ add_third_party_repos() {
 remove_firefox_and_libreoffice() {
     if ask_yes_no "Do you want to remove Firefox and LibreOffice?"; then
         echo -e "${GREEN}Removing Firefox and LibreOffice...${RESET}"
-        run_cmd "sudo dnf remove -y firefox libreoffice*"
+        run_cmd "sudo dnf remove -y firefox* libreoffice*"
         run_cmd "rm -rf ~/.mozilla ~/.cache/mozilla ~/.config/libreoffice ~/.cache/libreoffice"
+        run_cmd "sudo dnf autoremove"
         echo -e "${GREEN}Removed packages and leftover configs.${RESET}"
     else
         echo -e "${YELLOW}Skipping Firefox and LibreOffice removal.${RESET}"
@@ -183,6 +201,23 @@ install_apps_suite() {
 }
 
 # ------------------------
+# Install virt-manager and enable systemd services
+# ------------------------
+
+install_virt_manager() {
+    echo -e "${GREEN}Installing virt-manager and enabling systemd services...${RESET}"
+
+    # Install virt-manager and dependencies
+    run_cmd "sudo dnf install -y @virtualization"
+
+    # Enable the necessary system services
+    run_cmd "sudo systemctl start libvirtd"
+    run_cmd "sudo systemctl enable libvirtd"
+
+    echo -e "${GREEN}virt-manager installed and services enabled.${RESET}"
+}
+
+# ------------------------
 # Main Execution
 # ------------------------
 
@@ -196,4 +231,5 @@ upgrade_system_packages
 install_yt_dlp_and_aria2c
 install_gnome_tweaks_and_extension_manager  # Install GNOME Tweaks and Extension Manager
 install_apps_suite
+install_virt_manager
 echo -e "${CYAN}Script completed.${RESET}"
