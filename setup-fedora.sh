@@ -130,11 +130,11 @@ done
 
 echo "GNOME Extensions installed successfully."
 
-# Step 9: Restore Fonts from GitHub
-echo "Restoring fonts from GitHub..."
+# Step 9: Restore Fonts and Dotfiles from GitHub
+echo "Restoring fonts and dotfiles from GitHub..."
 
 # Hardcoded repository URL for dotfiles
-DOTFILES_REPO_URL="https://github.com/ashik-md/bash-dotfiles.git"
+DOTFILES_REPO_URL="https://github.com/ashik-md/dotfiles.git"
 
 # Clone the dotfiles repository
 DOTFILES_DIR="$HOME/dotfiles"
@@ -146,33 +146,14 @@ else
     cd "$DOTFILES_DIR" && git pull
 fi
 
-# Restore fonts
-echo "Restoring fonts to ~/.fonts..."
-mkdir -p ~/.fonts
-cp -r "$DOTFILES_DIR/fonts/"* ~/.fonts/
+# Run the install.sh script from the dotfiles repository
+echo "Running install.sh from dotfiles repository..."
+chmod +x "$DOTFILES_DIR/install.sh"
+"$DOTFILES_DIR/install.sh"
 
-# Refresh font cache
-echo "Refreshing font cache..."
-fc-cache -fv
+echo "Fonts and dotfiles restored successfully."
 
-echo "Fonts restored successfully."
-
-# Step 10: Restore Bash Configurations from GitHub
-echo "Restoring Bash configurations from GitHub..."
-
-# Restore .bashrc, .bashrc.d, and bin
-echo "Restoring .bashrc..."
-cp "$DOTFILES_DIR/bash/.bashrc" ~/
-
-echo "Restoring .bashrc.d..."
-cp -r "$DOTFILES_DIR/bash/.bashrc.d" ~/
-
-echo "Restoring bin..."
-cp -r "$DOTFILES_DIR/bash/bin" ~/
-
-echo "Bash configurations restored successfully."
-
-# Step 11: Enable Wayland Support for Google Chrome and Brave Browser (Optional)
+# Step 10: Enable Wayland Support for Google Chrome and Brave Browser (Optional)
 read -p "Do you want to enable Wayland support for Google Chrome and Brave Browser? (y/n): " ENABLE_WAYLAND
 
 if [[ "$ENABLE_WAYLAND" == "y" || "$ENABLE_WAYLAND" == "Y" ]]; then
