@@ -143,6 +143,20 @@ remove_firefox_and_libreoffice() {
     run_cmd "rm -rf ~/.mozilla ~/.cache/mozilla ~/.config/libreoffice ~/.cache/libreoffice"
     run_cmd "sudo dnf autoremove"
     echo -e "${GREEN}Removed packages and leftover configs.${RESET}"
+
+    # Inform the user about alternatives
+    echo -e "${YELLOW}
+Firefox and LibreOffice have been removed from your system.
+If you need them later, you can install them via Flatpak:
+
+To install LibreOffice:
+  flatpak install flathub org.libreoffice.LibreOffice
+
+To install LibreWolf (a privacy-focused Firefox fork):
+  flatpak install flathub io.gitlab.librewolf-community
+
+Note: LibreWolf is a community-maintained fork of Firefox with enhanced privacy features.
+${RESET}"
 }
 
 # ------------------------
@@ -269,7 +283,7 @@ sudo -v || { echo -e "${RED}Failed to acquire sudo privileges. Exiting.${RESET}"
 optimize_dnf_conf
 ensure_flatpak_support
 add_third_party_repos
-remove_firefox_and_libreoffice
+remove_firefox_and_libreoffice  # No confirmation asked; removal happens automatically
 replace_ffmpeg_with_proprietary
 run_cmd "sudo dnf upgrade -y"
 install_yt_dlp_and_aria2c
