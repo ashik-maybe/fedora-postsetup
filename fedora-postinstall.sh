@@ -94,6 +94,18 @@ ensure_flatpak_support() {
     echo -e "${GREEN}Flatpak and Flathub support ensured.${RESET}"
 }
 
+# Enable fstrim for SSDs
+enable_fstrim() {
+    echo -e "${GREEN}Enabling fstrim for SSDs...${RESET}"
+    if ! systemctl is-enabled fstrim.timer &> /dev/null; then
+        run_cmd "sudo systemctl enable fstrim.timer"
+        run_cmd "sudo systemctl start fstrim.timer"
+        echo -e "${GREEN}fstrim timer enabled and started.${RESET}"
+    else
+        echo -e "${YELLOW}fstrim timer is already enabled. Skipping.${RESET}"
+    fi
+}
+
 # ------------------------
 # Repository Management Functions
 # ------------------------
@@ -254,6 +266,31 @@ install_virt_manager() {
 }
 
 # ------------------------
+# Post-Installation Cleanup
+# ------------------------
+
+post_install_cleanup() {
+    echo -e "${GREEN}Performing post-installation cleanup...${RESET}"
+
+    # Remove orphaned packages
+    echo -e "${YELLOW}Removing orphaned packages...${RESET}"
+    run_cmd "sudo dnf autoremove -y"
+
+    # Clear DNF cache
+    echo -e "${YELLOW}Clearing DNF cache...${RESET}"
+    run_cmd "sudo dnf clean all"
+
+    # Clear Flatpak cache (if Flatpak is installed)
+    if command -v flatpak &> /dev/null; then
+        echo -e "${YELLOW}Clearing Flatpak cache...${RESET}"
+        run_cmd "flatpak uninstall --unused -y"
+        run_cmd "flatpak repair"
+    fi
+
+    echo -e "${GREEN}Post-installation cleanup completed.${RESET}"
+}
+
+# ------------------------
 # Main Execution
 # ------------------------
 
@@ -276,5 +313,7 @@ install_browsers
 install_cloudflare_warp
 install_gnome_tweaks_and_extension_manager  # Moved here for usability prioritization
 install_virt_manager
+enable_fstrim  # Enable fstrim for SSDs
+post_install_cleanup  # Perform post-installation cleanup
 
 echo -e "${CYAN}Script completed.${RESET}"
