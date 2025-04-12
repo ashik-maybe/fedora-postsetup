@@ -10,15 +10,24 @@ RED="\033[0;31m"
 RESET="\033[0m"
 
 # ------------------------
-# Check if a repository exists in /etc/yum.repos.d/
+# Error Handling Function
 # ------------------------
 
-repo_exists() {
-    local repo_name="$1"
-    if [ -f "/etc/yum.repos.d/$repo_name.repo" ]; then
-        return 0  # Repo exists
-    else
-        return 1  # Repo doesn't exist
+error_handler() {
+    echo -e "${RED}Error: $1${RESET}"
+}
+
+# ------------------------
+# Run command safely with error handling
+# ------------------------
+
+run_cmd() {
+    local cmd="$1"
+    echo -e "${CYAN}Running: $cmd${RESET}"
+    eval "$cmd"
+    if [ $? -ne 0 ]; then
+        error_handler "Command failed: $cmd"
+        return 1
     fi
 }
 
@@ -40,26 +49,13 @@ ask_yes_no() {
 }
 
 # ------------------------
-# Run command safely
-# ------------------------
-
-run_cmd() {
-    echo -e "${CYAN}Running: $1${RESET}"
-    eval "$1"
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}Command failed: $1${RESET}"
-        exit 1
-    fi
-}
-
-# ------------------------
-# Optimize dnf.conf if not already optimized
+# Optimize dnf.conf
 # ------------------------
 
 optimize_dnf_conf() {
+    echo -e "${GREEN}Optimizing dnf.conf...${RESET}"
     if ! grep -q "max_parallel_downloads=10" /etc/dnf/dnf.conf; then
-        echo -e "${GREEN}Optimizing dnf.conf...${RESET}"
-        sudo bash -c 'cat > /etc/dnf/dnf.conf << EOF
+        run_cmd "sudo bash -c 'cat > /etc/dnf/dnf.conf << EOF
 [main]
 gpgcheck=True
 installonly_limit=3
@@ -69,7 +65,7 @@ skip_if_unavailable=True
 max_parallel_downloads=10
 fastestmirror=True
 color=auto
-EOF'
+EOF'"
         echo -e "${GREEN}Optimized dnf.conf.${RESET}"
     else
         echo -e "${YELLOW}dnf.conf is already optimized. Skipping.${RESET}"
@@ -77,7 +73,7 @@ EOF'
 }
 
 # ------------------------
-# Ensure Flatpak and Flathub are installed
+# Ensure Flatpak and Flathub Support
 # ------------------------
 
 ensure_flatpak_support() {
@@ -101,57 +97,56 @@ ensure_flatpak_support() {
 }
 
 # ------------------------
-# Add third-party repositories if not already added
+# Add Third-Party Repositories
 # ------------------------
 
 add_third_party_repos() {
-    # Check if RPM Fusion Free and Non-Free are installed
+    echo -e "${GREEN}Adding third-party repositories...${RESET}"
+
+    # RPM Fusion Free and Non-Free
     if ! repo_exists "rpmfusion-free" && ! repo_exists "rpmfusion-nonfree"; then
-        echo -e "${GREEN}Adding third-party repositories...${RESET}"
-
         run_cmd "sudo dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm"
-
-        # Cloudflare Warp Repo
-        if ! repo_exists "cloudflare-warp"; then
-            run_cmd "curl -fsSl https://pkg.cloudflareclient.com/cloudflare-warp-ascii.repo | sudo tee /etc/yum.repos.d/cloudflare-warp.repo"
-        fi
-
-        # GitHub Desktop Repo
-        if ! repo_exists "mwt-packages"; then
-            run_cmd "sudo rpm --import https://mirror.mwt.me/shiftkey-desktop/gpgkey"
-            run_cmd "sudo sh -c 'echo -e \"[mwt-packages]\nname=GitHub Desktop\nbaseurl=https://mirror.mwt.me/shiftkey-desktop/rpm\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=1\ngpgkey=https://mirror.mwt.me/shiftkey-desktop/gpgkey\" > /etc/yum.repos.d/mwt-packages.repo'"
-        fi
-
-        # Visual Studio Code Repo
-        if ! repo_exists "vscode"; then
-            run_cmd "sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc"
-            run_cmd "echo -e \"[code]\nname=Visual Studio Code\nbaseurl=https://packages.microsoft.com/yumrepos/vscode\nenabled=1\nautorefresh=1\ntype=rpm-md\ngpgcheck=1\ngpgkey=https://packages.microsoft.com/keys/microsoft.asc\" | sudo tee /etc/yum.repos.d/vscode.repo > /dev/null"
-        fi
-
-        echo -e "${GREEN}Third-party repositories added.${RESET}"
-    else
-        echo -e "${YELLOW}Repositories are already added. Skipping.${RESET}"
     fi
+
+    # Cloudflare Warp Repo
+    if ! repo_exists "cloudflare-warp"; then
+        run_cmd "curl -fsSl https://pkg.cloudflareclient.com/cloudflare-warp-ascii.repo | sudo tee /etc/yum.repos.d/cloudflare-warp.repo"
+    fi
+
+    # GitHub Desktop Repo
+    if ! repo_exists "mwt-packages"; then
+        run_cmd "sudo rpm --import https://mirror.mwt.me/shiftkey-desktop/gpgkey"
+        run_cmd "sudo sh -c 'echo -e \"[mwt-packages]\nname=GitHub Desktop\nbaseurl=https://mirror.mwt.me/shiftkey-desktop/rpm\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=1\ngpgkey=https://mirror.mwt.me/shiftkey-desktop/gpgkey\" > /etc/yum.repos.d/mwt-packages.repo'"
+    fi
+
+    # Visual Studio Code Repo
+    if ! repo_exists "vscode"; then
+        run_cmd "sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc"
+        run_cmd "echo -e \"[code]\nname=Visual Studio Code\nbaseurl=https://packages.microsoft.com/yumrepos/vscode\nenabled=1\nautorefresh=1\ntype=rpm-md\ngpgcheck=1\ngpgkey=https://packages.microsoft.com/keys/microsoft.asc\" | sudo tee /etc/yum.repos.d/vscode.repo > /dev/null"
+    fi
+
+    # Google Chrome Repo
+    if ! repo_exists "google-chrome"; then
+        run_cmd "sudo sh -c 'echo -e \"[google-chrome]\nname=Google Chrome\nbaseurl=http://dl.google.com/linux/chrome/rpm/stable/x86_64\nenabled=1\ngpgcheck=1\ngpgkey=https://dl.google.com/linux/linux_signing_key.pub\" > /etc/yum.repos.d/google-chrome.repo'"
+    fi
+
+    echo -e "${GREEN}Third-party repositories added.${RESET}"
 }
 
 # ------------------------
-# Remove Firefox and LibreOffice if needed
+# Remove Firefox and LibreOffice
 # ------------------------
 
 remove_firefox_and_libreoffice() {
-    if ask_yes_no "Do you want to remove Firefox and LibreOffice?"; then
-        echo -e "${GREEN}Removing Firefox and LibreOffice...${RESET}"
-        run_cmd "sudo dnf remove -y firefox* libreoffice*"
-        run_cmd "rm -rf ~/.mozilla ~/.cache/mozilla ~/.config/libreoffice ~/.cache/libreoffice"
-        run_cmd "sudo dnf autoremove"
-        echo -e "${GREEN}Removed packages and leftover configs.${RESET}"
-    else
-        echo -e "${YELLOW}Skipping Firefox and LibreOffice removal.${RESET}"
-    fi
+    echo -e "${GREEN}Removing Firefox and LibreOffice...${RESET}"
+    run_cmd "sudo dnf remove -y firefox* libreoffice*"
+    run_cmd "rm -rf ~/.mozilla ~/.cache/mozilla ~/.config/libreoffice ~/.cache/libreoffice"
+    run_cmd "sudo dnf autoremove"
+    echo -e "${GREEN}Removed packages and leftover configs.${RESET}"
 }
 
 # ------------------------
-# Replace FFmpeg with the proprietary version
+# Replace FFmpeg with Proprietary Version
 # ------------------------
 
 replace_ffmpeg_with_proprietary() {
@@ -175,17 +170,22 @@ install_yt_dlp_and_aria2c() {
 # ------------------------
 
 install_gnome_tweaks_and_extension_manager() {
-    # Check if the current DE is GNOME
     if [[ "$XDG_CURRENT_DESKTOP" == *"GNOME"* ]]; then
-        echo -e "${GREEN}Installing GNOME Tweaks and Extension Manager...${RESET}"
+        echo -e "${GREEN}Detected GNOME desktop environment.${RESET}"
 
-        # Install GNOME Tweaks via DNF
-        run_cmd "sudo dnf install -y gnome-tweaks"
+        if ask_yes_no "Do you want to install GNOME Tweaks and Extension Manager?"; then
+            echo -e "${GREEN}Installing GNOME Tweaks and Extension Manager...${RESET}"
 
-        # Install Extension Manager via Flatpak
-        run_cmd "flatpak install -y flathub com.mattjakeman.ExtensionManager"
+            # Install GNOME Tweaks via DNF
+            run_cmd "sudo dnf install -y gnome-tweaks"
 
-        echo -e "${GREEN}GNOME Tweaks and Extension Manager installed.${RESET}"
+            # Install Extension Manager via Flatpak
+            run_cmd "flatpak install -y flathub com.mattjakeman.ExtensionManager"
+
+            echo -e "${GREEN}GNOME Tweaks and Extension Manager installed.${RESET}"
+        else
+            echo -e "${YELLOW}Skipping GNOME Tweaks and Extension Manager installation.${RESET}"
+        fi
     else
         echo -e "${YELLOW}Not running GNOME desktop environment. Skipping GNOME Tweaks and Extension Manager installation.${RESET}"
     fi
@@ -197,8 +197,14 @@ install_gnome_tweaks_and_extension_manager() {
 
 install_browsers() {
     echo -e "${GREEN}Installing browsers (Google Chrome, Brave)...${RESET}"
+
+    # Install Google Chrome
     run_cmd "sudo dnf install -y google-chrome-stable"
+
+    # Install Brave
     run_cmd "curl -fsS https://dl.brave.com/install.sh | sh"
+
+    echo -e "${GREEN}Browsers installed.${RESET}"
 }
 
 # ------------------------
@@ -206,11 +212,12 @@ install_browsers() {
 # ------------------------
 
 install_cloudflare_warp() {
-    echo -e "${GREEN}Installing Cloudflare WARP CLI...${RESET}"
-    run_cmd "sudo dnf install -y cloudflare-warp"
+    if ask_yes_no "Do you want to install Cloudflare WARP CLI?"; then
+        echo -e "${GREEN}Installing Cloudflare WARP CLI...${RESET}"
+        run_cmd "sudo dnf install -y cloudflare-warp"
 
-    echo -e "${CYAN}+++ Cloudflare Warp Initial Connection +++${RESET}"
-    echo -e "${YELLOW}
+        echo -e "${CYAN}+++ Cloudflare Warp Initial Connection +++${RESET}"
+        echo -e "${YELLOW}
 Initial Connection
 To connect for the very first time:
 
@@ -222,33 +229,30 @@ Switching modes:
   DNS only mode via DoH:  warp-cli mode doh
   WARP with DoH:          warp-cli mode warp+doh
 ${RESET}"
+    else
+        echo -e "${YELLOW}Skipping Cloudflare WARP CLI installation.${RESET}"
+    fi
 }
 
 # ------------------------
-# Install All Apps Suite
-# ------------------------
-
-install_apps_suite() {
-    install_development_tools
-    install_browsers
-    install_cloudflare_warp
-}
-
-# ------------------------
-# Install virt-manager and enable systemd services
+# Install virt-manager and Enable Services
 # ------------------------
 
 install_virt_manager() {
-    echo -e "${GREEN}Installing virt-manager and enabling systemd services...${RESET}"
+    if ask_yes_no "Do you want to install virt-manager and enable virtualization services?"; then
+        echo -e "${GREEN}Installing virt-manager and enabling systemd services...${RESET}"
 
-    # Install virt-manager and dependencies
-    run_cmd "sudo dnf install -y @virtualization"
+        # Install virt-manager and dependencies
+        run_cmd "sudo dnf install -y @virtualization"
 
-    # Enable the necessary system services
-    run_cmd "sudo systemctl start libvirtd"
-    run_cmd "sudo systemctl enable libvirtd"
+        # Enable the necessary system services
+        run_cmd "sudo systemctl start libvirtd"
+        run_cmd "sudo systemctl enable libvirtd"
 
-    echo -e "${GREEN}virt-manager installed and services enabled.${RESET}"
+        echo -e "${GREEN}virt-manager installed and services enabled.${RESET}"
+    else
+        echo -e "${YELLOW}Skipping virt-manager installation.${RESET}"
+    fi
 }
 
 # ------------------------
@@ -257,14 +261,21 @@ install_virt_manager() {
 
 clear
 echo -e "${CYAN}Fedora Post-Install Script Starting...${RESET}"
+
+# Cache sudo credentials
+echo -e "${YELLOW}Caching sudo credentials...${RESET}"
+sudo -v || { echo -e "${RED}Failed to acquire sudo privileges. Exiting.${RESET}"; exit 1; }
+
 optimize_dnf_conf
-ensure_flatpak_support  # Ensure Flatpak and Flathub are installed first
+ensure_flatpak_support
 add_third_party_repos
 remove_firefox_and_libreoffice
-replace_ffmpeg_with_proprietary  # Replace FFmpeg with proprietary version
-upgrade_system_packages
+replace_ffmpeg_with_proprietary
+run_cmd "sudo dnf upgrade -y"
 install_yt_dlp_and_aria2c
-install_gnome_tweaks_and_extension_manager  # Install GNOME Tweaks and Extension Manager
-install_apps_suite
+install_gnome_tweaks_and_extension_manager
+install_browsers
+install_cloudflare_warp
 install_virt_manager
+
 echo -e "${CYAN}Script completed.${RESET}"
