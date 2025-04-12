@@ -110,6 +110,16 @@ enable_fstrim() {
 # Repository Management Functions
 # ------------------------
 
+# Check if a repository exists
+repo_exists() {
+    local repo_name="$1"
+    if grep -q "\[$repo_name\]" /etc/yum.repos.d/*.repo; then
+        return 0  # Repository exists
+    else
+        return 1  # Repository does not exist
+    fi
+}
+
 # Add third-party repositories
 add_third_party_repos() {
     echo -e "${GREEN}Adding third-party repositories...${RESET}"
@@ -117,28 +127,27 @@ add_third_party_repos() {
     # RPM Fusion Free and Non-Free
     if ! repo_exists "rpmfusion-free" && ! repo_exists "rpmfusion-nonfree"; then
         run_cmd "sudo dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm"
+    else
+        echo -e "${YELLOW}RPM Fusion repositories already added. Skipping.${RESET}"
     fi
 
     # Cloudflare Warp Repo
     if ! repo_exists "cloudflare-warp"; then
         run_cmd "curl -fsSl https://pkg.cloudflareclient.com/cloudflare-warp-ascii.repo | sudo tee /etc/yum.repos.d/cloudflare-warp.repo"
-    fi
-
-    # GitHub Desktop Repo
-    if ! repo_exists "mwt-packages"; then
-        run_cmd "sudo rpm --import https://mirror.mwt.me/shiftkey-desktop/gpgkey"
-        run_cmd "sudo sh -c 'echo -e \"[mwt-packages]\nname=GitHub Desktop\nbaseurl=https://mirror.mwt.me/shiftkey-desktop/rpm\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=1\ngpgkey=https://mirror.mwt.me/shiftkey-desktop/gpgkey\" > /etc/yum.repos.d/mwt-packages.repo'"
-    fi
-
-    # Visual Studio Code Repo
-    if ! repo_exists "vscode"; then
-        run_cmd "sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc"
-        run_cmd "echo -e \"[code]\nname=Visual Studio Code\nbaseurl=https://packages.microsoft.com/yumrepos/vscode\nenabled=1\nautorefresh=1\ntype=rpm-md\ngpgcheck=1\ngpgkey=https://packages.microsoft.com/keys/microsoft.asc\" | sudo tee /etc/yum.repos.d/vscode.repo > /dev/null"
+    else
+        echo -e "${YELLOW}Cloudflare WARP repository already added. Skipping.${RESET}"
     fi
 
     # Google Chrome Repo
     if ! repo_exists "google-chrome"; then
-        run_cmd "sudo sh -c 'echo -e \"[google-chrome]\nname=Google Chrome\nbaseurl=http://dl.google.com/linux/chrome/rpm/stable/x86_64\nenabled=1\ngpgcheck=1\ngpgkey=https://dl.google.com/linux/linux_signing_key.pub\" > /etc/yum.repos.d/google-chrome.repo'"
+        run_cmd "sudo sh -c 'echo -e \"[google-chrome]
+name=Google Chrome
+baseurl=http://dl.google.com/linux/chrome/rpm/stable/x86_64
+enabled=1
+gpgcheck=1
+gpgkey=https://dl.google.com/linux/linux_signing_key.pub\" > /etc/yum.repos.d/google-chrome.repo'"
+    else
+        echo -e "${YELLOW}Google Chrome repository already added. Skipping.${RESET}"
     fi
 
     echo -e "${GREEN}Third-party repositories added.${RESET}"
@@ -153,7 +162,6 @@ remove_firefox_and_libreoffice() {
     echo -e "${GREEN}Removing Firefox and LibreOffice...${RESET}"
     run_cmd "sudo dnf remove -y firefox* libreoffice*"
     run_cmd "rm -rf ~/.mozilla ~/.cache/mozilla ~/.config/libreoffice ~/.cache/libreoffice"
-    run_cmd "sudo dnf autoremove"
     echo -e "${GREEN}Removed packages and leftover configs.${RESET}"
 
     # Inform the user about alternatives
