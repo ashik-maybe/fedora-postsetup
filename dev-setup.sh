@@ -28,33 +28,34 @@ ask_yes_no() {
         case "$response" in
             [Yy]* ) return 0 ;;  # User answered "yes"
             [Nn]* ) return 1 ;;  # User answered "no"
-            * ) echo -e "${RED}Please answer 'y' for yes or 'n' for no.${RESET}" ;;
+            * ) echo -e "${RED}Please answer 'y' or 'n'.${RESET}" ;;
         esac
     done
 }
 
 repo_exists() {
-    local repo_name="$1"
-    if grep -q "\[$repo_name\]" /etc/yum.repos.d/*.repo; then
-        return 0
-    else
-        return 1
-    fi
+    grep -q "\[$1\]" /etc/yum.repos.d/*.repo && return 0 || return 1
 }
 
 add_dev_repos() {
     echo -e "${GREEN}Adding developer repositories...${RESET}"
 
+    # Add VS Code Repo
     if ! repo_exists "vscode"; then
         run_cmd "sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc"
         run_cmd "echo -e \"[code]
 name=Visual Studio Code
 baseurl=https://packages.microsoft.com/yumrepos/vscode
 enabled=1
+autorefresh=1
+type=rpm-md
 gpgcheck=1
 gpgkey=https://packages.microsoft.com/keys/microsoft.asc\" | sudo tee /etc/yum.repos.d/vscode.repo > /dev/null"
+    else
+        echo -e "${YELLOW}VS Code repository already added. Skipping.${RESET}"
     fi
 
+    # Add GitHub Desktop Repo
     if ! repo_exists "mwt-packages"; then
         run_cmd "sudo rpm --import https://mirror.mwt.me/shiftkey-desktop/gpgkey"
         run_cmd "sudo sh -c 'echo -e \"[mwt-packages]
@@ -64,30 +65,25 @@ enabled=1
 gpgcheck=1
 repo_gpgcheck=1
 gpgkey=https://mirror.mwt.me/shiftkey-desktop/gpgkey\" > /etc/yum.repos.d/mwt-packages.repo'"
+    else
+        echo -e "${YELLOW}GitHub Desktop repository already added. Skipping.${RESET}"
     fi
 }
 
 install_core_dev_tools() {
-    if ask_yes_no "Do you want to install Visual Studio Code?"; then
-        run_cmd "sudo dnf install -y code"
-    else
-        echo -e "${YELLOW}Skipping Visual Studio Code installation.${RESET}"
-    fi
-
-    if ask_yes_no "Do you want to install GitHub Desktop?"; then
-        run_cmd "sudo dnf install -y github-desktop"
-    else
-        echo -e "${YELLOW}Skipping GitHub Desktop installation.${RESET}"
-    fi
-
+    # Install Git automatically
     if ! command -v git &> /dev/null; then
-        if ask_yes_no "Do you want to install Git?"; then
-            run_cmd "sudo dnf install -y git"
-        else
-            echo -e "${YELLOW}Skipping Git installation.${RESET}"
-        fi
+        echo -e "${GREEN}Installing Git...${RESET}"
+        run_cmd "sudo dnf install -y git"
     else
         echo -e "${YELLOW}Git is already installed. Skipping.${RESET}"
+    fi
+
+    # Ask once for both VS Code and GitHub Desktop
+    if ask_yes_no "Do you want to install VS Code and GitHub Desktop?"; then
+        run_cmd "sudo dnf install -y code github-desktop"
+    else
+        echo -e "${YELLOW}Skipping VS Code and GitHub Desktop installation.${RESET}"
     fi
 }
 
@@ -241,12 +237,7 @@ echo -e "${CYAN}Fedora Developer Setup Script Starting...${RESET}"
 sudo -v || { echo -e "${RED}Failed to acquire sudo privileges. Exiting.${RESET}"; exit 1; }
 
 add_dev_repos
-
-if ask_yes_no "Do you want to install core development tools (VS Code, GitHub Desktop, Git)?"; then
-    install_core_dev_tools
-else
-    echo -e "${YELLOW}Skipping core development tools installation.${RESET}"
-fi
+install_core_dev_tools
 
 echo -e "${YELLOW}
 What type of development setup do you need?
