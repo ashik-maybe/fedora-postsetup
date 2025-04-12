@@ -154,8 +154,6 @@ To install LibreOffice:
 
 To install LibreWolf (a privacy-focused Firefox fork):
   flatpak install flathub io.gitlab.librewolf-community
-
-Note: LibreWolf is a community-maintained fork of Firefox with enhanced privacy features.
 ${RESET}"
 }
 
