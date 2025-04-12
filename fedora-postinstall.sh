@@ -1,39 +1,20 @@
 #!/bin/bash
 
-# ------------------------
-# Color Definitions
-# ------------------------
 CYAN="\033[0;36m"
 GREEN="\033[0;32m"
 YELLOW="\033[0;33m"
 RED="\033[0;31m"
 RESET="\033[0m"
 
-# ------------------------
-# Error Handling Function
-# ------------------------
-
 error_handler() {
     echo -e "${RED}Error: $1${RESET}"
 }
 
-# ------------------------
-# Run Command Safely with Error Handling
-# ------------------------
-
 run_cmd() {
     local cmd="$1"
     echo -e "${CYAN}Running: $cmd${RESET}"
-    eval "$cmd"
-    if [ $? -ne 0 ]; then
-        error_handler "Command failed: $cmd"
-        return 1
-    fi
+    eval "$cmd" || error_handler "Command failed: $cmd"
 }
-
-# ------------------------
-# Ask Yes/No Question
-# ------------------------
 
 ask_yes_no() {
     local question="$1"
@@ -41,20 +22,18 @@ ask_yes_no() {
         echo -e "${YELLOW}$question (y/n): ${RESET}"
         read -r response
         case "$response" in
-            [Yy]* ) return 0 ;;  # User answered "yes"
-            [Nn]* ) return 1 ;;  # User answered "no"
-            * ) echo -e "${RED}Please answer 'y' for yes or 'n' for no.${RESET}" ;;
+            [Yy]* ) return 0 ;;
+            [Nn]* ) return 1 ;;
+            * ) echo -e "${RED}Please answer 'y' or 'n'.${RESET}" ;;
         esac
     done
 }
 
-# ------------------------
-# System Optimization Functions
-# ------------------------
+repo_exists() {
+    grep -q "\[$1\]" /etc/yum.repos.d/*.repo && return 0 || return 1
+}
 
-# Optimize dnf.conf for better performance
 optimize_dnf_conf() {
-    echo -e "${GREEN}Optimizing dnf.conf...${RESET}"
     if ! grep -q "max_parallel_downloads=10" /etc/dnf/dnf.conf; then
         run_cmd "sudo bash -c 'cat > /etc/dnf/dnf.conf << EOF
 [main]
@@ -67,78 +46,33 @@ max_parallel_downloads=10
 fastestmirror=True
 color=auto
 EOF'"
-        echo -e "${GREEN}Optimized dnf.conf.${RESET}"
-    else
-        echo -e "${YELLOW}dnf.conf is already optimized. Skipping.${RESET}"
     fi
 }
 
-# Ensure Flatpak and Flathub support
 ensure_flatpak_support() {
-    echo -e "${GREEN}Ensuring Flatpak and Flathub support...${RESET}"
-
-    # Install Flatpak if not already installed
     if ! command -v flatpak &> /dev/null; then
-        echo -e "${YELLOW}Flatpak is not installed. Installing Flatpak...${RESET}"
         run_cmd "sudo dnf install -y flatpak"
     fi
-
-    # Add Flathub repository if not already added
     if ! flatpak remotes | grep -q "flathub"; then
-        echo -e "${YELLOW}Adding Flathub repository...${RESET}"
         run_cmd "flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo"
-    else
-        echo -e "${YELLOW}Flathub repository already added. Skipping.${RESET}"
     fi
-
-    echo -e "${GREEN}Flatpak and Flathub support ensured.${RESET}"
 }
 
-# Enable fstrim for SSDs
 enable_fstrim() {
-    echo -e "${GREEN}Enabling fstrim for SSDs...${RESET}"
     if ! systemctl is-enabled fstrim.timer &> /dev/null; then
-        run_cmd "sudo systemctl enable fstrim.timer"
-        run_cmd "sudo systemctl start fstrim.timer"
-        echo -e "${GREEN}fstrim timer enabled and started.${RESET}"
-    else
-        echo -e "${YELLOW}fstrim timer is already enabled. Skipping.${RESET}"
+        run_cmd "sudo systemctl enable --now fstrim.timer"
     fi
 }
 
-# ------------------------
-# Repository Management Functions
-# ------------------------
-
-# Check if a repository exists
-repo_exists() {
-    local repo_name="$1"
-    if grep -q "\[$repo_name\]" /etc/yum.repos.d/*.repo; then
-        return 0  # Repository exists
-    else
-        return 1  # Repository does not exist
-    fi
-}
-
-# Add third-party repositories
 add_third_party_repos() {
-    echo -e "${GREEN}Adding third-party repositories...${RESET}"
-
-    # RPM Fusion Free and Non-Free
     if ! repo_exists "rpmfusion-free" && ! repo_exists "rpmfusion-nonfree"; then
         run_cmd "sudo dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm"
-    else
-        echo -e "${YELLOW}RPM Fusion repositories already added. Skipping.${RESET}"
     fi
 
-    # Cloudflare Warp Repo
     if ! repo_exists "cloudflare-warp"; then
         run_cmd "curl -fsSl https://pkg.cloudflareclient.com/cloudflare-warp-ascii.repo | sudo tee /etc/yum.repos.d/cloudflare-warp.repo"
-    else
-        echo -e "${YELLOW}Cloudflare WARP repository already added. Skipping.${RESET}"
     fi
 
-    # Google Chrome Repo
     if ! repo_exists "google-chrome"; then
         run_cmd "sudo sh -c 'echo -e \"[google-chrome]
 name=Google Chrome
@@ -146,182 +80,83 @@ baseurl=http://dl.google.com/linux/chrome/rpm/stable/x86_64
 enabled=1
 gpgcheck=1
 gpgkey=https://dl.google.com/linux/linux_signing_key.pub\" > /etc/yum.repos.d/google-chrome.repo'"
-    else
-        echo -e "${YELLOW}Google Chrome repository already added. Skipping.${RESET}"
     fi
-
-    echo -e "${GREEN}Third-party repositories added.${RESET}"
 }
 
-# ------------------------
-# Package Removal Functions
-# ------------------------
-
-# Remove Firefox and LibreOffice
 remove_firefox_and_libreoffice() {
-    echo -e "${GREEN}Removing Firefox and LibreOffice...${RESET}"
     run_cmd "sudo dnf remove -y firefox* libreoffice*"
     run_cmd "rm -rf ~/.mozilla ~/.cache/mozilla ~/.config/libreoffice ~/.cache/libreoffice"
-    echo -e "${GREEN}Removed packages and leftover configs.${RESET}"
-
-    # Inform the user about alternatives
-    echo -e "${YELLOW}
-Firefox and LibreOffice have been removed from your system.
-If you need them later, you can install them via Flatpak:
-
-To install LibreOffice:
-  flatpak install flathub org.libreoffice.LibreOffice
-
-To install LibreWolf (a privacy-focused Firefox fork):
-  flatpak install flathub io.gitlab.librewolf-community
-${RESET}"
 }
 
-# ------------------------
-# Package Installation Functions
-# ------------------------
-
-# Replace FFmpeg with proprietary version
 replace_ffmpeg_with_proprietary() {
-    echo -e "${GREEN}Replacing FFmpeg with proprietary version...${RESET}"
     run_cmd "sudo dnf swap ffmpeg-free ffmpeg --allowerasing"
-    echo -e "${GREEN}Proprietary FFmpeg installed.${RESET}"
 }
 
-# Install yt-dlp and aria2c
 install_yt_dlp_and_aria2c() {
-    echo -e "${GREEN}Installing yt-dlp and aria2c...${RESET}"
     run_cmd "sudo dnf install -y yt-dlp aria2"
-    echo -e "${GREEN}yt-dlp and aria2c installed.${RESET}"
 }
 
-# Install browsers (Google Chrome, Brave)
 install_browsers() {
-    echo -e "${GREEN}Installing browsers (Google Chrome, Brave)...${RESET}"
-
-    # Install Google Chrome
     run_cmd "sudo dnf install -y google-chrome-stable"
-
-    # Install Brave
     run_cmd "curl -fsS https://dl.brave.com/install.sh | sh"
-
-    echo -e "${GREEN}Browsers installed.${RESET}"
 }
 
-# Install Cloudflare WARP CLI
 install_cloudflare_warp() {
-    if ask_yes_no "Do you want to install Cloudflare WARP CLI?"; then
-        echo -e "${GREEN}Installing Cloudflare WARP CLI...${RESET}"
+    if ask_yes_no "Install Cloudflare WARP CLI?"; then
         run_cmd "sudo dnf install -y cloudflare-warp"
-
-        echo -e "${CYAN}+++ Cloudflare Warp Initial Connection +++${RESET}"
         echo -e "${YELLOW}
-Initial Connection
-To connect for the very first time:
-
-  Register the client:    warp-cli registration new
-  Connect:                warp-cli connect
-  Verify:                 curl https://www.cloudflare.com/cdn-cgi/trace/ (look for warp=on)
-
-Switching modes:
-  DNS only mode via DoH:  warp-cli mode doh
-  WARP with DoH:          warp-cli mode warp+doh
+To connect:
+  Register: warp-cli registration new
+  Connect:  warp-cli connect
+  Verify:   curl https://www.cloudflare.com/cdn-cgi/trace/ (look for warp=on)
+Switch modes:
+  DNS only: warp-cli mode doh
+  WARP+DoH: warp-cli mode warp+doh
 ${RESET}"
-    else
-        echo -e "${YELLOW}Skipping Cloudflare WARP CLI installation.${RESET}"
     fi
 }
 
-# Install GNOME Tweaks and Extension Manager
 install_gnome_tweaks_and_extension_manager() {
     if [[ "$XDG_CURRENT_DESKTOP" == *"GNOME"* ]]; then
-        echo -e "${GREEN}Detected GNOME desktop environment.${RESET}"
-
-        if ask_yes_no "Do you want to install GNOME Tweaks and Extension Manager?"; then
-            echo -e "${GREEN}Installing GNOME Tweaks and Extension Manager...${RESET}"
-
-            # Install GNOME Tweaks via DNF
+        if ask_yes_no "Install GNOME Tweaks and Extension Manager?"; then
             run_cmd "sudo dnf install -y gnome-tweaks"
-
-            # Install Extension Manager via Flatpak
             run_cmd "flatpak install -y flathub com.mattjakeman.ExtensionManager"
-
-            echo -e "${GREEN}GNOME Tweaks and Extension Manager installed.${RESET}"
-        else
-            echo -e "${YELLOW}Skipping GNOME Tweaks and Extension Manager installation.${RESET}"
         fi
-    else
-        echo -e "${YELLOW}Not running GNOME desktop environment. Skipping GNOME Tweaks and Extension Manager installation.${RESET}"
     fi
 }
 
-# Install virt-manager and enable virtualization services
 install_virt_manager() {
-    if ask_yes_no "Do you want to install virt-manager and enable virtualization services?"; then
-        echo -e "${GREEN}Installing virt-manager and enabling systemd services...${RESET}"
-
-        # Install virt-manager and dependencies
+    if ask_yes_no "Install virt-manager and enable virtualization?"; then
         run_cmd "sudo dnf install -y @virtualization"
-
-        # Enable the necessary system services
-        run_cmd "sudo systemctl start libvirtd"
-        run_cmd "sudo systemctl enable libvirtd"
-
-        echo -e "${GREEN}virt-manager installed and services enabled.${RESET}"
-    else
-        echo -e "${YELLOW}Skipping virt-manager installation.${RESET}"
+        run_cmd "sudo systemctl enable --now libvirtd"
     fi
 }
-
-# ------------------------
-# Post-Installation Cleanup
-# ------------------------
 
 post_install_cleanup() {
-    echo -e "${GREEN}Performing post-installation cleanup...${RESET}"
-
-    # Remove orphaned packages
-    echo -e "${YELLOW}Removing orphaned packages...${RESET}"
     run_cmd "sudo dnf autoremove -y"
-
-    # Clear DNF cache
-    echo -e "${YELLOW}Clearing DNF cache...${RESET}"
     run_cmd "sudo dnf clean all"
-
-    # Clear Flatpak cache (if Flatpak is installed)
     if command -v flatpak &> /dev/null; then
-        echo -e "${YELLOW}Clearing Flatpak cache...${RESET}"
         run_cmd "flatpak uninstall --unused -y"
         run_cmd "flatpak repair"
     fi
-
-    echo -e "${GREEN}Post-installation cleanup completed.${RESET}"
 }
-
-# ------------------------
-# Main Execution
-# ------------------------
 
 clear
 echo -e "${CYAN}Fedora Post-Install Script Starting...${RESET}"
-
-# Cache sudo credentials
-echo -e "${YELLOW}Caching sudo credentials...${RESET}"
 sudo -v || { echo -e "${RED}Failed to acquire sudo privileges. Exiting.${RESET}"; exit 1; }
 
-# Execute script steps
 optimize_dnf_conf
 ensure_flatpak_support
 add_third_party_repos
-remove_firefox_and_libreoffice  # No confirmation asked; removal happens automatically
+remove_firefox_and_libreoffice
 replace_ffmpeg_with_proprietary
 run_cmd "sudo dnf upgrade -y"
 install_yt_dlp_and_aria2c
 install_browsers
 install_cloudflare_warp
-install_gnome_tweaks_and_extension_manager  # Moved here for usability prioritization
+install_gnome_tweaks_and_extension_manager
 install_virt_manager
-enable_fstrim  # Enable fstrim for SSDs
-post_install_cleanup  # Perform post-installation cleanup
+enable_fstrim
+post_install_cleanup
 
 echo -e "${CYAN}Script completed.${RESET}"
