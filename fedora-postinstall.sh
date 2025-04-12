@@ -77,6 +77,30 @@ EOF'
 }
 
 # ------------------------
+# Ensure Flatpak and Flathub are installed
+# ------------------------
+
+ensure_flatpak_support() {
+    echo -e "${GREEN}Ensuring Flatpak and Flathub support...${RESET}"
+
+    # Install Flatpak if not already installed
+    if ! command -v flatpak &> /dev/null; then
+        echo -e "${YELLOW}Flatpak is not installed. Installing Flatpak...${RESET}"
+        run_cmd "sudo dnf install -y flatpak"
+    fi
+
+    # Add Flathub repository if not already added
+    if ! flatpak remotes | grep -q "flathub"; then
+        echo -e "${YELLOW}Adding Flathub repository...${RESET}"
+        run_cmd "flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo"
+    else
+        echo -e "${YELLOW}Flathub repository already added. Skipping.${RESET}"
+    fi
+
+    echo -e "${GREEN}Flatpak and Flathub support ensured.${RESET}"
+}
+
+# ------------------------
 # Add third-party repositories if not already added
 # ------------------------
 
@@ -151,10 +175,20 @@ install_yt_dlp_and_aria2c() {
 # ------------------------
 
 install_gnome_tweaks_and_extension_manager() {
-    echo -e "${GREEN}Installing GNOME Tweaks and Extension Manager...${RESET}"
-    run_cmd "sudo dnf install -y gnome-tweaks"
-    run_cmd "flatpak install -y flathub com.mattjakeman.ExtensionManager"
-    echo -e "${GREEN}GNOME Tweaks and Extension Manager installed.${RESET}"
+    # Check if the current DE is GNOME
+    if [[ "$XDG_CURRENT_DESKTOP" == *"GNOME"* ]]; then
+        echo -e "${GREEN}Installing GNOME Tweaks and Extension Manager...${RESET}"
+
+        # Install GNOME Tweaks via DNF
+        run_cmd "sudo dnf install -y gnome-tweaks"
+
+        # Install Extension Manager via Flatpak
+        run_cmd "flatpak install -y flathub com.mattjakeman.ExtensionManager"
+
+        echo -e "${GREEN}GNOME Tweaks and Extension Manager installed.${RESET}"
+    else
+        echo -e "${YELLOW}Not running GNOME desktop environment. Skipping GNOME Tweaks and Extension Manager installation.${RESET}"
+    fi
 }
 
 # ------------------------
@@ -224,6 +258,7 @@ install_virt_manager() {
 clear
 echo -e "${CYAN}Fedora Post-Install Script Starting...${RESET}"
 optimize_dnf_conf
+ensure_flatpak_support  # Ensure Flatpak and Flathub are installed first
 add_third_party_repos
 remove_firefox_and_libreoffice
 replace_ffmpeg_with_proprietary  # Replace FFmpeg with proprietary version
