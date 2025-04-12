@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ------------------------
-# Color definitions
+# Color Definitions
 # ------------------------
 CYAN="\033[0;36m"
 GREEN="\033[0;32m"
@@ -18,7 +18,7 @@ error_handler() {
 }
 
 # ------------------------
-# Run command safely with error handling
+# Run Command Safely with Error Handling
 # ------------------------
 
 run_cmd() {
@@ -49,9 +49,10 @@ ask_yes_no() {
 }
 
 # ------------------------
-# Optimize dnf.conf
+# System Optimization Functions
 # ------------------------
 
+# Optimize dnf.conf for better performance
 optimize_dnf_conf() {
     echo -e "${GREEN}Optimizing dnf.conf...${RESET}"
     if ! grep -q "max_parallel_downloads=10" /etc/dnf/dnf.conf; then
@@ -72,10 +73,7 @@ EOF'"
     fi
 }
 
-# ------------------------
-# Ensure Flatpak and Flathub Support
-# ------------------------
-
+# Ensure Flatpak and Flathub support
 ensure_flatpak_support() {
     echo -e "${GREEN}Ensuring Flatpak and Flathub support...${RESET}"
 
@@ -97,9 +95,10 @@ ensure_flatpak_support() {
 }
 
 # ------------------------
-# Add Third-Party Repositories
+# Repository Management Functions
 # ------------------------
 
+# Add third-party repositories
 add_third_party_repos() {
     echo -e "${GREEN}Adding third-party repositories...${RESET}"
 
@@ -134,9 +133,10 @@ add_third_party_repos() {
 }
 
 # ------------------------
-# Remove Firefox and LibreOffice
+# Package Removal Functions
 # ------------------------
 
+# Remove Firefox and LibreOffice
 remove_firefox_and_libreoffice() {
     echo -e "${GREEN}Removing Firefox and LibreOffice...${RESET}"
     run_cmd "sudo dnf remove -y firefox* libreoffice*"
@@ -158,55 +158,24 @@ ${RESET}"
 }
 
 # ------------------------
-# Replace FFmpeg with Proprietary Version
+# Package Installation Functions
 # ------------------------
 
+# Replace FFmpeg with proprietary version
 replace_ffmpeg_with_proprietary() {
     echo -e "${GREEN}Replacing FFmpeg with proprietary version...${RESET}"
     run_cmd "sudo dnf swap ffmpeg-free ffmpeg --allowerasing"
     echo -e "${GREEN}Proprietary FFmpeg installed.${RESET}"
 }
 
-# ------------------------
 # Install yt-dlp and aria2c
-# ------------------------
-
 install_yt_dlp_and_aria2c() {
     echo -e "${GREEN}Installing yt-dlp and aria2c...${RESET}"
     run_cmd "sudo dnf install -y yt-dlp aria2"
     echo -e "${GREEN}yt-dlp and aria2c installed.${RESET}"
 }
 
-# ------------------------
-# Install GNOME Tweaks and Extension Manager
-# ------------------------
-
-install_gnome_tweaks_and_extension_manager() {
-    if [[ "$XDG_CURRENT_DESKTOP" == *"GNOME"* ]]; then
-        echo -e "${GREEN}Detected GNOME desktop environment.${RESET}"
-
-        if ask_yes_no "Do you want to install GNOME Tweaks and Extension Manager?"; then
-            echo -e "${GREEN}Installing GNOME Tweaks and Extension Manager...${RESET}"
-
-            # Install GNOME Tweaks via DNF
-            run_cmd "sudo dnf install -y gnome-tweaks"
-
-            # Install Extension Manager via Flatpak
-            run_cmd "flatpak install -y flathub com.mattjakeman.ExtensionManager"
-
-            echo -e "${GREEN}GNOME Tweaks and Extension Manager installed.${RESET}"
-        else
-            echo -e "${YELLOW}Skipping GNOME Tweaks and Extension Manager installation.${RESET}"
-        fi
-    else
-        echo -e "${YELLOW}Not running GNOME desktop environment. Skipping GNOME Tweaks and Extension Manager installation.${RESET}"
-    fi
-}
-
-# ------------------------
-# Install Browsers
-# ------------------------
-
+# Install browsers (Google Chrome, Brave)
 install_browsers() {
     echo -e "${GREEN}Installing browsers (Google Chrome, Brave)...${RESET}"
 
@@ -219,10 +188,7 @@ install_browsers() {
     echo -e "${GREEN}Browsers installed.${RESET}"
 }
 
-# ------------------------
-# Install Cloudflare Warp CLI
-# ------------------------
-
+# Install Cloudflare WARP CLI
 install_cloudflare_warp() {
     if ask_yes_no "Do you want to install Cloudflare WARP CLI?"; then
         echo -e "${GREEN}Installing Cloudflare WARP CLI...${RESET}"
@@ -246,10 +212,30 @@ ${RESET}"
     fi
 }
 
-# ------------------------
-# Install virt-manager and Enable Services
-# ------------------------
+# Install GNOME Tweaks and Extension Manager
+install_gnome_tweaks_and_extension_manager() {
+    if [[ "$XDG_CURRENT_DESKTOP" == *"GNOME"* ]]; then
+        echo -e "${GREEN}Detected GNOME desktop environment.${RESET}"
 
+        if ask_yes_no "Do you want to install GNOME Tweaks and Extension Manager?"; then
+            echo -e "${GREEN}Installing GNOME Tweaks and Extension Manager...${RESET}"
+
+            # Install GNOME Tweaks via DNF
+            run_cmd "sudo dnf install -y gnome-tweaks"
+
+            # Install Extension Manager via Flatpak
+            run_cmd "flatpak install -y flathub com.mattjakeman.ExtensionManager"
+
+            echo -e "${GREEN}GNOME Tweaks and Extension Manager installed.${RESET}"
+        else
+            echo -e "${YELLOW}Skipping GNOME Tweaks and Extension Manager installation.${RESET}"
+        fi
+    else
+        echo -e "${YELLOW}Not running GNOME desktop environment. Skipping GNOME Tweaks and Extension Manager installation.${RESET}"
+    fi
+}
+
+# Install virt-manager and enable virtualization services
 install_virt_manager() {
     if ask_yes_no "Do you want to install virt-manager and enable virtualization services?"; then
         echo -e "${GREEN}Installing virt-manager and enabling systemd services...${RESET}"
@@ -278,6 +264,7 @@ echo -e "${CYAN}Fedora Post-Install Script Starting...${RESET}"
 echo -e "${YELLOW}Caching sudo credentials...${RESET}"
 sudo -v || { echo -e "${RED}Failed to acquire sudo privileges. Exiting.${RESET}"; exit 1; }
 
+# Execute script steps
 optimize_dnf_conf
 ensure_flatpak_support
 add_third_party_repos
@@ -285,9 +272,9 @@ remove_firefox_and_libreoffice  # No confirmation asked; removal happens automat
 replace_ffmpeg_with_proprietary
 run_cmd "sudo dnf upgrade -y"
 install_yt_dlp_and_aria2c
-install_gnome_tweaks_and_extension_manager
 install_browsers
 install_cloudflare_warp
+install_gnome_tweaks_and_extension_manager  # Moved here for usability prioritization
 install_virt_manager
 
 echo -e "${CYAN}Script completed.${RESET}"
