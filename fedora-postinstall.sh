@@ -138,9 +138,9 @@ install_browsers() {
     fi
 }
 
-# 9. Install Cloudflare WARP
 install_cloudflare_warp() {
     echo -e "${YELLOW}☁️ Installing Cloudflare WARP CLI...${RESET}"
+    
     if ! command -v warp-cli &>/dev/null; then
         run_cmd "sudo dnf install -y cloudflare-warp"
         echo -e "${GREEN}✅ WARP CLI installed.${RESET}"
@@ -148,15 +148,27 @@ install_cloudflare_warp() {
         echo -e "${GREEN}✅ WARP CLI already present.${RESET}"
     fi
 
-    echo -e "${CYAN}
-💡 To connect:
-  📌 Register: warp-cli registration new
-  🔗 Connect:  warp-cli connect
-  ✅ Verify:   curl https://www.cloudflare.com/cdn-cgi/trace/ (check for warp=on)
-🔁 Switch modes:
-  DNS only:    warp-cli mode doh
-  WARP+DoH:    warp-cli mode warp+doh
+    if command -v warp-cli &>/dev/null; then
+        echo -e "${CYAN}
+🔧 WARP CLI Quick Usage:
+
+🆕 First-time setup:
+  ➤ Register:  warp-cli registration new
+  🔗 Connect:   warp-cli connect
+  ✅ Verify:    curl https://www.cloudflare.com/cdn-cgi/trace | grep warp
+
+⚙️ Mode switching:
+  🔸 DNS only (DoH):     warp-cli mode doh
+  🔹 WARP + DoH:         warp-cli mode warp+doh
+
+👨‍👩‍👧‍👦 1.1.1.1 for Families:
+  🚫 Off:                warp-cli dns families off
+  🛡️ Malware filter:     warp-cli dns families malware
+  🔞 Full filter:        warp-cli dns families full
+
+📚 More commands: warp-cli --help
 ${RESET}"
+    fi
 }
 
 # 10. Enable fstrim
