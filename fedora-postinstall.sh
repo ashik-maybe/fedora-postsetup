@@ -104,7 +104,7 @@ remove_firefox_and_libreoffice() {
 # 5. Swap to proprietary ffmpeg
 replace_ffmpeg_with_proprietary() {
     echo -e "${YELLOW}🎞️ Replacing ffmpeg-free with proprietary ffmpeg...${RESET}"
-    run_cmd "sudo dnf swap ffmpeg-free ffmpeg --allowerasing"
+    run_cmd "sudo dnf -y swap ffmpeg-free ffmpeg --allowerasing"
     echo -e "${GREEN}✅ ffmpeg replaced.${RESET}"
 }
 
