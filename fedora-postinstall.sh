@@ -144,10 +144,10 @@ enable_fstrim() {
 post_install_cleanup() {
     echo -e "${YELLOW}🧼 Final cleanup...${RESET}"
     run_cmd "sudo dnf autoremove -y"
-    run_cmd "sudo dnf clean all"
+    # run_cmd "sudo dnf clean all"
     if command -v flatpak &>/dev/null; then
         run_cmd "flatpak uninstall --unused -y"
-        run_cmd "flatpak repair"
+        # run_cmd "flatpak repair"
     fi
     echo -e "${GREEN}✅ All clean.${RESET}"
 }
