@@ -68,6 +68,13 @@ ensure_flatpak_support() {
     else
         echo -e "${GREEN}✅ Flathub already configured.${RESET}"
     fi
+
+    if ! flatpak list | grep -q com.github.tchx84.Flatseal; then
+        echo -e "${YELLOW}🔒 Installing Flatseal...${RESET}"
+        run_cmd "flatpak install -y flathub com.github.tchx84.Flatseal"
+    else
+        echo -e "${GREEN}✅ Flatseal already installed.${RESET}"
+    fi
 }
 
 # 3. Add RPM Fusion, Chrome, and WARP Repos
