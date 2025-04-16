@@ -40,8 +40,8 @@ echo -e "${GREEN}✅ DNF optimized.${RESET}"
 # ──────────────────────────────────────────────────────────────
 # 🧰 Install useful VM tools
 echo -e "${YELLOW}🧰 Installing virtual machine tools...${RESET}"
-run_cmd "sudo dnf install -y spice-vdagent qemu-guest-agent open-vm-tools"
-sudo systemctl enable --now spice-vdagent qemu-guest-agent
+run_cmd "sudo dnf install -y qemu-guest-agent open-vm-tools"
+sudo systemctl enable --now qemu-guest-agent
 echo -e "${GREEN}✅ Guest tools installed and enabled.${RESET}"
 
 # ──────────────────────────────────────────────────────────────
