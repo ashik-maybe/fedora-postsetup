@@ -38,18 +38,42 @@ ask_yes_no() {
 }
 
 # ------------------------
+# Check if the system is using Wayland
+# ------------------------
+
+is_wayland() {
+    if [[ "$XDG_SESSION_TYPE" == "wayland" ]]; then
+        return 0  # Wayland is active
+    else
+        return 1  # Not Wayland
+    fi
+}
+
+# ------------------------
 # Force Wayland for Brave
 # ------------------------
 
 force_brave_wayland() {
+    # Check if the system is Wayland
+    if ! is_wayland; then
+        echo -e "${RED}Not using Wayland! Skipping Brave Wayland setup.${RESET}"
+        return
+    fi
+
+    # Check if Brave is installed
+    if ! command -v brave-browser &>/dev/null; then
+        echo -e "${RED}Brave Browser is not installed! Skipping Wayland setup.${RESET}"
+        return
+    fi
+
     if ask_yes_no "Do you want to force Brave browser to use Wayland?"; then
         echo -e "${GREEN}Checking for Brave .desktop file...${RESET}"
 
-        if [[ -f "./brave-browser.desktop" ]]; then
+        if [[ -f "./files/brave-browser.desktop" ]]; then
             echo -e "${GREEN}Found Brave .desktop file. Copying to ~/.local/share/applications/${RESET}"
 
             # Copy the Brave .desktop file to ~/.local/share/applications/ and ensure it's executable
-            run_cmd "cp ./brave-browser.desktop ~/.local/share/applications/brave-browser.desktop"
+            run_cmd "cp ./files/brave-browser.desktop ~/.local/share/applications/brave-browser.desktop"
             run_cmd "chmod +x ~/.local/share/applications/brave-browser.desktop"
 
             echo -e "${GREEN}.desktop file copied and made executable.${RESET}"
@@ -66,14 +90,26 @@ force_brave_wayland() {
 # ------------------------
 
 force_chrome_wayland() {
+    # Check if the system is Wayland
+    if ! is_wayland; then
+        echo -e "${RED}Not using Wayland! Skipping Chrome Wayland setup.${RESET}"
+        return
+    fi
+
+    # Check if Google Chrome is installed
+    if ! command -v google-chrome &>/dev/null; then
+        echo -e "${RED}Google Chrome is not installed! Skipping Wayland setup.${RESET}"
+        return
+    fi
+
     if ask_yes_no "Do you want to force Google Chrome to use Wayland?"; then
         echo -e "${GREEN}Checking for Chrome .desktop file...${RESET}"
 
-        if [[ -f "./google-chrome.desktop" ]]; then
+        if [[ -f "./files/google-chrome.desktop" ]]; then
             echo -e "${GREEN}Found Chrome .desktop file. Copying to ~/.local/share/applications/${RESET}"
 
             # Copy the Chrome .desktop file to ~/.local/share/applications/ and ensure it's executable
-            run_cmd "cp ./google-chrome.desktop ~/.local/share/applications/google-chrome.desktop"
+            run_cmd "cp ./files/google-chrome.desktop ~/.local/share/applications/google-chrome.desktop"
             run_cmd "chmod +x ~/.local/share/applications/google-chrome.desktop"
 
             echo -e "${GREEN}.desktop file copied and made executable.${RESET}"
