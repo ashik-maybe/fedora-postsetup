@@ -62,11 +62,11 @@ remove_firefox_and_libreoffice() {
 }
 
 # ──────────────────────────────────────────────────────────────
-# 🎞️ 4. Remove ffmpeg-free
-remove_ffmpeg_free() {
-    echo -e "${YELLOW}🎞️ Removing ffmpeg-free...${RESET}"
-    run_cmd "sudo dnf remove -y ffmpeg-free"
-    echo -e "${GREEN}✅ ffmpeg-free removed.${RESET}"
+# 🎞️ 4. Swap ffmpeg-free with proprietary ffmpeg
+swap_ffmpeg_with_proprietary() {
+    echo -e "${YELLOW}🎞️ Swapping ffmpeg-free with proprietary ffmpeg...${RESET}"
+    run_cmd "sudo dnf swap ffmpeg-free ffmpeg --allowerasing -y"
+    echo -e "${GREEN}✅ Proprietary ffmpeg installed.${RESET}"
 }
 
 # ──────────────────────────────────────────────────────────────
@@ -78,15 +78,7 @@ upgrade_system() {
 }
 
 # ──────────────────────────────────────────────────────────────
-# 🎞️ 6. Install ffmpeg (proprietary)
-install_proprietary_ffmpeg() {
-    echo -e "${YELLOW}🎞️ Installing proprietary ffmpeg...${RESET}"
-    run_cmd "sudo dnf install -y ffmpeg"
-    echo -e "${GREEN}✅ ffmpeg installed.${RESET}"
-}
-
-# ──────────────────────────────────────────────────────────────
-# 📦 7. Flatpak + Flatseal
+# 📦 6. Flatpak + Flatseal
 ensure_flatpak_support() {
     echo -e "${YELLOW}📦 Setting up Flatpak & Flatseal...${RESET}"
 
@@ -110,7 +102,7 @@ ensure_flatpak_support() {
 }
 
 # ──────────────────────────────────────────────────────────────
-# 🎬 8. Install yt-dlp + aria2
+# 🎬 7. Install yt-dlp + aria2
 install_yt_dlp_and_aria2c() {
     echo -e "${YELLOW}🎬 Installing yt-dlp and aria2...${RESET}"
     run_cmd "sudo dnf install -y yt-dlp aria2"
@@ -118,7 +110,7 @@ install_yt_dlp_and_aria2c() {
 }
 
 # ──────────────────────────────────────────────────────────────
-# 🦁 9. Install Brave browser
+# 🦁 8. Install Brave browser
 install_brave_browser() {
     echo -e "${YELLOW}🦁 Installing Brave Browser...${RESET}"
     if ! command -v brave-browser &>/dev/null; then
@@ -129,7 +121,7 @@ install_brave_browser() {
 }
 
 # ──────────────────────────────────────────────────────────────
-# 🧊 10. Enable fstrim.timer
+# 🧊 9. Enable fstrim.timer
 enable_fstrim() {
     echo -e "${YELLOW}🧊 Enabling fstrim.timer...${RESET}"
     if ! systemctl is-enabled fstrim.timer &>/dev/null; then
@@ -140,14 +132,12 @@ enable_fstrim() {
 }
 
 # ──────────────────────────────────────────────────────────────
-# 🧼 11. Clean system
+# 🧼 10. Clean system
 post_install_cleanup() {
     echo -e "${YELLOW}🧼 Final cleanup...${RESET}"
     run_cmd "sudo dnf autoremove -y"
-    # run_cmd "sudo dnf clean all"
     if command -v flatpak &>/dev/null; then
         run_cmd "flatpak uninstall --unused -y"
-        # run_cmd "flatpak repair"
     fi
     echo -e "${GREEN}✅ All clean.${RESET}"
 }
@@ -167,9 +157,8 @@ trap 'kill $KEEP_SUDO_PID' EXIT
 optimize_dnf_conf
 add_third_party_repos
 remove_firefox_and_libreoffice
-remove_ffmpeg_free
+swap_ffmpeg_with_proprietary
 upgrade_system
-install_proprietary_ffmpeg
 ensure_flatpak_support
 install_yt_dlp_and_aria2c
 install_brave_browser
