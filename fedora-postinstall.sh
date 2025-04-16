@@ -15,6 +15,11 @@ clear
 echo -e "${CYAN}🚀 Fedora Post-Install Script Starting...${RESET}"
 sudo -v || { echo -e "${RED}❌ Failed to acquire sudo privileges. Exiting.${RESET}"; exit 1; }
 
+# Keep sudo alive while the script runs
+( while true; do sudo -n true; sleep 60; done ) 2>/dev/null &
+KEEP_SUDO_PID=$!
+trap 'kill $KEEP_SUDO_PID' EXIT
+
 # Error handler
 error_handler() {
     echo -e "${RED}❌ Error: $1${RESET}"
