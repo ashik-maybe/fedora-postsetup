@@ -68,12 +68,45 @@ install_flatpak_and_extension_manager() {
 }
 
 # ──────────────────────────────────────────────────────────────
+# 🧩 Install GNOME Extensions
+install_gnome_extensions() {
+    # List of GNOME extensions to check and install
+    local extensions=(
+        "gnome-shell-extension-appindicator"
+        "gnome-shell-extension-blur-my-shell"
+        "gnome-shell-extension-dash-to-dock"
+        "gnome-shell-extension-caffeine"
+        # "gnome-shell-extension-gsconnect"
+        # "gnome-shell-extension-forge"
+        # "gnome-shell-extension-pop-shell"
+    )
+
+    for extension in "${extensions[@]}"; do
+        if rpm -q "$extension" &>/dev/null; then
+            echo -e "${GREEN}✅ $extension is already installed.${RESET}"
+        else
+            echo -e "${YELLOW}🔧 $extension is not installed. Would you like to install it? (y/n): ${RESET}"
+            read -r install_extension
+            if [[ "$install_extension" =~ ^[Yy]$ ]]; then
+                run_cmd "sudo dnf install -y $extension"
+                echo -e "${GREEN}✅ $extension installed.${RESET}"
+            else
+                echo -e "${RED}❌ $extension installation skipped.${RESET}"
+            fi
+        fi
+    done
+}
+
+# ──────────────────────────────────────────────────────────────
 # ▶️ Run Setup for GNOME
 if is_gnome; then
     echo -e "${CYAN}🌟 GNOME environment detected. Proceeding with GNOME setup...${RESET}"
 
     # Check and install Flatpak and Extension Manager
     install_flatpak_and_extension_manager
+
+    # Check and install GNOME extensions
+    install_gnome_extensions
 
 else
     echo -e "${RED}❌ GNOME environment not detected. Skipping GNOME-specific setup.${RESET}"
