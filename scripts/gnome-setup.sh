@@ -76,9 +76,8 @@ install_gnome_extensions() {
         "gnome-shell-extension-blur-my-shell"
         "gnome-shell-extension-dash-to-dock"
         "gnome-shell-extension-caffeine"
-        # "gnome-shell-extension-gsconnect"
-        # "gnome-shell-extension-forge"
-        # "gnome-shell-extension-pop-shell"
+        "gnome-shell-extension-forge"
+        "gnome-shell-extension-gsconnect"
     )
 
     for extension in "${extensions[@]}"; do
