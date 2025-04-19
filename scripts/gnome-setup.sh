@@ -73,10 +73,10 @@ install_gnome_extensions() {
     # List of GNOME extensions to check and install
     local extensions=(
         "gnome-shell-extension-appindicator"
-        "gnome-shell-extension-blur-my-shell"
-        "gnome-shell-extension-dash-to-dock"
-        "gnome-shell-extension-caffeine"
-        "gnome-shell-extension-forge"
+        #"gnome-shell-extension-blur-my-shell"
+        #"gnome-shell-extension-dash-to-dock"
+        #"gnome-shell-extension-caffeine"
+        #"gnome-shell-extension-forge"
         "gnome-shell-extension-gsconnect"
     )
 
