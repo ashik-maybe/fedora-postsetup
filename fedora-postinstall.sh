@@ -31,11 +31,25 @@ optimize_dnf_conf() {
 gpgcheck=True
 installonly_limit=3
 clean_requirements_on_remove=True
-best=False
-skip_if_unavailable=True
-max_parallel_downloads=10
+
+# ✅ Speed up mirror selection and downloads
 fastestmirror=True
+max_parallel_downloads=10
+timeout=15
+retries=2
+skip_if_unavailable=True
+
+# ✅ Use latest *stable* packages
+best=True
+#deltarpm=True
+
+# ✅ Script/automation-friendly behavior
+#defaultyes=True
+keepcache=False
+
+# ✅ Cleaner output
 color=auto
+errorlevel=1
 EOF
     echo -e "${GREEN}✅ DNF optimized.${RESET}"
 }
