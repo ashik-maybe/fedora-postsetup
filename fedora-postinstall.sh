@@ -187,9 +187,9 @@ remove_firefox_and_libreoffice
 swap_ffmpeg_with_proprietary
 upgrade_system
 ensure_flatpak_support
-install_brave_flatpak
+#install_brave_flatpak
 install_yt_dlp_and_aria2c
-#install_brave_browser
+install_brave_browser
 enable_fstrim
 post_install_cleanup
 
