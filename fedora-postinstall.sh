@@ -134,6 +134,19 @@ install_brave_browser() {
     fi
 }
 
+# 🦁 8. Install Brave browser via Flatpak
+install_brave_flatpak() {
+    echo -e "${YELLOW}🦁 Checking for Brave Browser (Flatpak)...${RESET}"
+    if ! flatpak list | grep -q com.brave.Browser; then
+        echo -e "${YELLOW}📦 Installing Brave Browser (Flatpak)...${RESET}"
+        if ! run_cmd "flatpak install -y flathub com.brave.Browser"; then
+            echo -e "${RED}❌ Failed to install Brave Browser (Flatpak). Continuing...${RESET}"
+        fi
+    else
+        echo -e "${GREEN}✅ Brave Browser (Flatpak) is already installed.${RESET}"
+    fi
+}
+
 # ──────────────────────────────────────────────────────────────
 # 🧊 9. Enable fstrim.timer
 enable_fstrim() {
@@ -174,8 +187,9 @@ remove_firefox_and_libreoffice
 swap_ffmpeg_with_proprietary
 upgrade_system
 ensure_flatpak_support
+install_brave_flatpak
 install_yt_dlp_and_aria2c
-install_brave_browser
+#install_brave_browser
 enable_fstrim
 post_install_cleanup
 
