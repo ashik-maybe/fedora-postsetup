@@ -5,12 +5,6 @@
 # ./wayland-desktop-overrides-flatpak.sh --undo   -> Removes patched .desktop files (undo patch).
 # ./wayland-desktop-overrides-flatpak.sh --remove   -> Alias for --undo, removes patched .desktop files.
 
-#####
-# BrowseRating
-# https://www.browserating.com/
-# Browser Performance Ranking for macOS/Windows/Android
-#####
-
 # List of Chromium-based browsers
 BROWSERS=(
     "com.brave.Browser"
