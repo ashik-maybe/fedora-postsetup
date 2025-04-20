@@ -5,6 +5,12 @@
 # You'll be shown available browsers to install and installed ones to uninstall.
 # Select using space-separated numbers (e.g., 1 3 7), or 'q' to quit.
 
+#####
+# BrowseRating
+# https://www.browserating.com/
+# Browser Performance Ranking for macOS/Windows/Android
+#####
+
 # Browser Categories
 CHROMIUM_BROWSERS=(
     "com.brave.Browser"
