@@ -1,132 +1,82 @@
 #!/bin/bash
 
-# ------------------------
-# Color definitions
-# ------------------------
-CYAN="\033[0;36m"
-GREEN="\033[0;32m"
-YELLOW="\033[0;33m"
-RED="\033[0;31m"
-MAGENTA="\033[0;35m"
-RESET="\033[0m"
+# Usage:
+# ./wayland-desktop-overrides.sh          -> Detects installed browsers, offers to patch them for Wayland.
+# ./wayland-desktop-overrides.sh --undo  -> Removes patched .desktop files.
+# ./wayland-desktop-overrides.sh --remove -> Same as --undo.
 
-# ------------------------
-# Path setup
-# ------------------------
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(dirname "$SCRIPT_DIR")"
-FILES_DIR="${REPO_ROOT}/files"
+# Chromium-based browser .desktop filenames (RPM versions)
+BROWSERS=(
+    "brave-browser.desktop"
+    "google-chrome.desktop"
+    "google-chrome-unstable.desktop"
+    "microsoft-edge.desktop"
+    "microsoft-edge-dev.desktop"
+    "opera.desktop"
+    "vivaldi-stable.desktop"
+    "ungoogled-chromium.desktop"
+    "chromium.desktop"
+    "yandex-browser.desktop"
+)
 
-# ------------------------
-# Run command safely
-# ------------------------
-run_cmd() {
-    echo -e "${CYAN}Running: $1${RESET}"
-    eval "$1"
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}Command failed: $1${RESET}"
-        exit 1
-    fi
-}
+SOURCE_DIR="/usr/share/applications"
+DEST_DIR="$HOME/.local/share/applications"
+mkdir -p "$DEST_DIR"
 
-# ------------------------
-# Ask for user confirmation
-# ------------------------
-ask_yes_no() {
-    while true; do
-        read -p "$1 (y/n): " yn
-        case $yn in
-            [Yy]* ) return 0;;
-            [Nn]* ) return 1;;
-            * ) echo "Please answer yes or no.";;
-        esac
+# List installed .desktop files for supported browsers
+list_installed_browsers() {
+    INSTALLED_BROWSERS=()
+    for BROWSER in "${BROWSERS[@]}"; do
+        if [[ -f "$SOURCE_DIR/$BROWSER" ]]; then
+            INSTALLED_BROWSERS+=("$BROWSER")
+        fi
     done
 }
 
-# ------------------------
-# Force Wayland for Brave
-# ------------------------
-force_brave_wayland() {
-    if [[ "$XDG_SESSION_TYPE" == "wayland" ]]; then
-        if command -v brave-browser &>/dev/null; then
-            if ask_yes_no "Do you want to force Brave browser to use Wayland?"; then
-                echo -e "${GREEN}Checking for Brave .desktop file...${RESET}"
-
-                if [[ -f "${FILES_DIR}/brave-browser.desktop" ]]; then
-                    echo -e "${GREEN}Found Brave .desktop file. Copying to ~/.local/share/applications/${RESET}"
-                    run_cmd "cp '${FILES_DIR}/brave-browser.desktop' ~/.local/share/applications/brave-browser.desktop"
-                    run_cmd "chmod +x ~/.local/share/applications/brave-browser.desktop"
-                    echo -e "${GREEN}🎉 Brave .desktop file copied and made executable.${RESET}"
-                else
-                    echo -e "${RED}❌ Brave .desktop file not found in ${FILES_DIR}! Skipping.${RESET}"
-                fi
-            else
-                echo -e "${YELLOW}Skipping Brave Wayland setup.${RESET}"
-            fi
-        else
-            echo -e "${RED}❌ Brave browser is not installed!${RESET}"
-        fi
-    else
-        echo -e "${YELLOW}❌ Not using Wayland. Skipping Brave setup.${RESET}"
-    fi
+# Patch for Wayland support
+patch_wayland() {
+    for BROWSER in "${INSTALLED_BROWSERS[@]}"; do
+        SRC="$SOURCE_DIR/$BROWSER"
+        DEST="$DEST_DIR/$BROWSER"
+        cp "$SRC" "$DEST"
+        sed -i '/^Exec=/s|$| --enable-features=UseOzonePlatform --ozone-platform=wayland --enable-features=TouchpadOverscrollHistoryNavigation|' "$DEST"
+        chmod +x "$DEST"
+        echo -e "\033[32m✔ Patched for Wayland: $DEST\033[0m"
+    done
 }
 
-# ------------------------
-# Force Wayland for Chrome
-# ------------------------
-force_chrome_wayland() {
-    if [[ "$XDG_SESSION_TYPE" == "wayland" ]]; then
-        if command -v google-chrome &>/dev/null; then
-            if ask_yes_no "Do you want to force Google Chrome to use Wayland?"; then
-                echo -e "${GREEN}Checking for Chrome .desktop file...${RESET}"
-
-                if [[ -f "${FILES_DIR}/google-chrome.desktop" ]]; then
-                    echo -e "${GREEN}Found Chrome .desktop file. Copying to ~/.local/share/applications/${RESET}"
-                    run_cmd "cp '${FILES_DIR}/google-chrome.desktop' ~/.local/share/applications/google-chrome.desktop"
-                    run_cmd "chmod +x ~/.local/share/applications/google-chrome.desktop"
-                    echo -e "${GREEN}🎉 Chrome .desktop file copied and made executable.${RESET}"
-                else
-                    echo -e "${RED}❌ Chrome .desktop file not found in ${FILES_DIR}! Skipping.${RESET}"
-                fi
-            else
-                echo -e "${YELLOW}Skipping Chrome Wayland setup.${RESET}"
-            fi
-        else
-            echo -e "${RED}❌ Google Chrome is not installed!${RESET}"
+# Remove patched .desktop files
+remove_patched() {
+    list_installed_browsers
+    for BROWSER in "${INSTALLED_BROWSERS[@]}"; do
+        DEST="$DEST_DIR/$BROWSER"
+        if [[ -f "$DEST" ]]; then
+            rm -f "$DEST"
+            echo -e "\033[31m✘ Removed override: $DEST\033[0m"
         fi
-    else
-        echo -e "${YELLOW}❌ Not using Wayland. Skipping Chrome setup.${RESET}"
-    fi
+    done
+    echo -e "\033[32m✔ All patched .desktop overrides removed.\033[0m"
+    exit 0
 }
 
-# ------------------------
-# Force Wayland for Discord
-# ------------------------
-setup_discord() {
-    if [[ -f "$HOME/software/Discord/Discord" ]]; then
-        echo -e "${MAGENTA}🔍 Found Discord executable. Checking for discord.desktop...${RESET}"
+# Handle undo/remove
+if [[ "$1" == "--undo" || "$1" == "--remove" ]]; then
+    echo -e "\033[34m→ Reversing Wayland patches...\033[0m"
+    remove_patched
+fi
 
-        if [[ -f "${FILES_DIR}/discord.desktop" ]]; then
-            echo -e "${GREEN}✅ Found Discord .desktop file. Copying to ~/.local/share/applications/${RESET}"
-            run_cmd "cp '${FILES_DIR}/discord.desktop' ~/.local/share/applications/discord.desktop"
-            run_cmd "chmod +x ~/.local/share/applications/discord.desktop"
-            echo -e "${GREEN}🎉 Discord .desktop file copied and made executable.${RESET}"
-        else
-            echo -e "${RED}❌ Discord .desktop file not found in ${FILES_DIR}! Skipping.${RESET}"
-        fi
-    else
-        echo -e "${YELLOW}❌ Discord executable not found at ~/software/Discord/Discord! Skipping.${RESET}"
-    fi
-}
+# Default patching flow
+list_installed_browsers
+if [[ ${#INSTALLED_BROWSERS[@]} -eq 0 ]]; then
+    echo -e "\033[31mNo supported Chromium-based browsers found in $SOURCE_DIR.\033[0m"
+    exit 1
+fi
 
-# ------------------------
-# Main Execution
-# ------------------------
-clear
-echo -e "${CYAN}Force Wayland for Browsers Script Starting...${RESET}"
+echo -e "\033[34mThe following RPM-installed browsers were found:\033[0m"
+for B in "${INSTALLED_BROWSERS[@]}"; do echo -e "\033[34m - $B\033[0m"; done
+echo -n -e "\033[33mWould you like to patch them for Wayland support? (y/n): \033[0m"
+read -r CONFIRM
+[[ "$CONFIRM" =~ ^[Yy]$ ]] || { echo -e "\033[31mAborted.\033[0m"; exit 0; }
 
-force_brave_wayland
-force_chrome_wayland
-setup_discord
-
-echo -e "${CYAN}Script completed.${RESET}"
+patch_wayland
+echo -e "\033[32m✅ Done. Please log out and back in to apply changes.\033[0m"
