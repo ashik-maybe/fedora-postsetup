@@ -39,30 +39,43 @@ function install_plugins() {
 }
 
 function write_fast_zshrc() {
-    echo "📝 Writing ultra-fast .zshrc..."
+    echo "📝 Writing ultra-fast .zshrc with working history..."
 
     cat > "$HOME/.zshrc" << 'EOL'
-# Minimal and fast Zsh config
+# Minimal and fast Zsh config with full history support
 
-# Optional: Git info in prompt using vcs_info
+# === History Settings ===
+HISTFILE=~/.zsh_history
+HISTSIZE=10000
+SAVEHIST=10000
+
+setopt inc_append_history     # Save each command instantly
+setopt share_history          # Share history between sessions
+setopt hist_ignore_dups       # Ignore duplicates
+setopt extended_history       # Save timestamps (optional)
+setopt hist_verify            # Confirm before running from history
+
+# === Prompt with Git info ===
 autoload -Uz vcs_info
 precmd_vcs_info() { vcs_info }
 precmd_functions+=( precmd_vcs_info )
 setopt PROMPT_SUBST
 PS1='%(?:%{$fg_bold[green]%}➜ :%{$fg_bold[red]%}➜ :) %~ ${vcs_info_msg_0_} %# '
 
-# Load fast syntax highlighting
+# === Plugin Paths ===
 ZSH_CUSTOM="$HOME/.oh-my-zsh/custom"
+
+# === Fast Syntax Highlighting ===
 source "$ZSH_CUSTOM/plugins/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh"
 
-# Delay autosuggestions to reduce startup time
+# === Delay Autosuggestions for Speed ===
 autoload -Uz add-zsh-hook
 load_autosuggest() {
   source "$ZSH_CUSTOM/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
 }
 add-zsh-hook -Uz precmd load_autosuggest
 
-# Faster completion init with caching
+# === Completion Setup (Cached) ===
 autoload -Uz compinit
 if [[ -n ${ZDOTDIR} ]]; then
   zcompdump="${ZDOTDIR}/.zcompdump"
@@ -75,11 +88,9 @@ else
   compinit -C -d "$zcompdump"
 fi
 
-# PATH
+# === PATH and Editor ===
 export PATH="$PATH:$HOME/bin"
-
-# Editor
-export EDITOR='nvim'
+export EDITOR='code'
 EOL
 }
 
