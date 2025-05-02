@@ -67,11 +67,11 @@ add_third_party_repos() {
 }
 
 # ──────────────────────────────────────────────────────────────
-# 🧹 3. Remove Firefox and LibreOffice
-remove_firefox_and_libreoffice() {
-    echo -e "${YELLOW}🧹 Removing Firefox and LibreOffice...${RESET}"
-    run_cmd "sudo dnf remove -y firefox* libreoffice*"
-    run_cmd "rm -rf ~/.mozilla ~/.cache/mozilla ~/.config/libreoffice ~/.cache/libreoffice"
+# 🧹 3. Remove Firefox
+remove_firefox() {
+    echo -e "${YELLOW}🧹 Removing Firefox...${RESET}"
+    run_cmd "sudo dnf remove -y firefox"
+    # run_cmd "rm -rf ~/.mozilla ~/.cache/mozilla"
     echo -e "${GREEN}✅ Cleanup complete.${RESET}"
 }
 
@@ -183,7 +183,7 @@ trap 'kill $KEEP_SUDO_PID' EXIT
 
 optimize_dnf_conf
 add_third_party_repos
-remove_firefox_and_libreoffice
+remove_firefox
 swap_ffmpeg_with_proprietary
 upgrade_system
 ensure_flatpak_support
