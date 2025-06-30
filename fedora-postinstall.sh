@@ -144,16 +144,16 @@ install_brave_browser() {
     fi
 }
 
-# 🦁 9. Alternative: Brave browser via Flatpak
-install_brave_flatpak() {
-    echo -e "${YELLOW}🦁 Checking for Brave Browser (Flatpak)...${RESET}"
-    if ! flatpak list | grep -q com.brave.Browser; then
-        echo -e "${YELLOW}📦 Installing Brave Browser (Flatpak)...${RESET}"
-        if ! run_cmd "flatpak install -y flathub com.brave.Browser"; then
-            echo -e "${RED}❌ Failed to install Brave Browser (Flatpak). Continuing...${RESET}"
+# 🐺 9. Alternative: Install LibreWolf via Flatpak
+install_librewolf_flatpak() {
+    echo -e "${YELLOW}🐺 Checking for LibreWolf (Flatpak)...${RESET}"
+    if ! flatpak list | grep -q io.gitlab.librewolf-community; then
+        echo -e "${YELLOW}📦 Installing LibreWolf (Flatpak)...${RESET}"
+        if ! run_cmd "flatpak install -y flathub io.gitlab.librewolf-community"; then
+            echo -e "${RED}❌ Failed to install LibreWolf. Continuing...${RESET}"
         fi
     else
-        echo -e "${GREEN}✅ Brave Browser (Flatpak) is already installed.${RESET}"
+        echo -e "${GREEN}✅ LibreWolf is already installed.${RESET}"
     fi
 }
 
@@ -198,7 +198,7 @@ swap_ffmpeg_with_proprietary
 upgrade_system
 ensure_flatpak_support
 install_gear_lever
-#install_brave_flatpak
+#install_librewolf_flatpak
 install_yt_dlp_and_aria2c
 install_brave_browser
 enable_fstrim
