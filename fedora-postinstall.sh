@@ -134,30 +134,113 @@ install_yt_dlp_and_aria2c() {
 }
 
 # ──────────────────────────────────────────────────────────────
-# 🪟 9. Alternative: Install Microsoft Edge via Flatpak
-install_edge_flatpak() {
-    echo -e "${YELLOW}🪟 Checking for Microsoft Edge (Flatpak)...${RESET}"
-    if ! flatpak list | grep -q com.microsoft.Edge; then
-        echo -e "${YELLOW}📦 Installing Microsoft Edge (Flatpak)...${RESET}"
-        if ! run_cmd "flatpak install -y flathub com.microsoft.Edge"; then
-            echo -e "${RED}❌ Failed to install Microsoft Edge. Continuing...${RESET}"
-        fi
-    else
-        echo -e "${GREEN}✅ Microsoft Edge is already installed.${RESET}"
+# 🌍 9. Browser Setup:
+#  - Blink (Chromium-based): Brave, Chrome, Edge, Vivaldi, Opera
+#  - Gecko (Firefox-based): LibreWolf
+
+# 🦁 Brave Browser
+install_brave_browser() {
+    echo -e "${YELLOW}🦁 Installing Brave Browser...${RESET}"
+    if command -v brave-browser &>/dev/null; then
+        echo -e "${GREEN}✅ Brave is already installed.${RESET}"
+        return
     fi
+    run_cmd "curl -fsS https://dl.brave.com/install.sh | sh"
 }
 
-# 🐺 9. Alternative: Install LibreWolf via Flatpak
-install_librewolf_flatpak() {
-    echo -e "${YELLOW}🐺 Checking for LibreWolf (Flatpak)...${RESET}"
-    if ! flatpak list | grep -q io.gitlab.librewolf-community; then
-        echo -e "${YELLOW}📦 Installing LibreWolf (Flatpak)...${RESET}"
-        if ! run_cmd "flatpak install -y flathub io.gitlab.librewolf-community"; then
-            echo -e "${RED}❌ Failed to install LibreWolf. Continuing...${RESET}"
-        fi
-    else
-        echo -e "${GREEN}✅ LibreWolf is already installed.${RESET}"
+# 🌐 Google Chrome
+install_chrome_browser() {
+    echo -e "${YELLOW}🌐 Installing Google Chrome...${RESET}"
+    if command -v google-chrome &>/dev/null; then
+        echo -e "${GREEN}✅ Google Chrome is already installed.${RESET}"
+        return
     fi
+    if ! repo_exists "google-chrome"; then
+        sudo tee /etc/yum.repos.d/google-chrome.repo > /dev/null <<EOF
+[google-chrome]
+name=google-chrome
+baseurl=https://dl.google.com/linux/chrome/rpm/stable/x86_64
+enabled=1
+gpgcheck=1
+gpgkey=https://dl.google.com/linux/linux_signing_key.pub
+EOF
+    fi
+    run_cmd "sudo dnf install -y google-chrome-stable"
+}
+
+# 🪟 Microsoft Edge
+install_edge_browser() {
+    echo -e "${YELLOW}🪟 Installing Microsoft Edge...${RESET}"
+    if command -v microsoft-edge &>/dev/null; then
+        echo -e "${GREEN}✅ Microsoft Edge is already installed.${RESET}"
+        return
+    fi
+    if ! repo_exists "microsoft-edge"; then
+        sudo tee /etc/yum.repos.d/microsoft-edge.repo > /dev/null <<EOF
+[microsoft-edge]
+name=microsoft-edge
+baseurl=https://packages.microsoft.com/yumrepos/edge/
+enabled=1
+gpgcheck=1
+gpgkey=https://packages.microsoft.com/keys/microsoft.asc
+EOF
+    fi
+    run_cmd "sudo dnf install -y microsoft-edge-stable"
+}
+
+# 🧭 Vivaldi Browser
+install_vivaldi_browser() {
+    echo -e "${YELLOW}🧭 Installing Vivaldi Browser...${RESET}"
+    if command -v vivaldi &>/dev/null; then
+        echo -e "${GREEN}✅ Vivaldi is already installed.${RESET}"
+        return
+    fi
+    if ! repo_exists "vivaldi"; then
+        sudo tee /etc/yum.repos.d/vivaldi.repo > /dev/null <<EOF
+[vivaldi]
+name=vivaldi
+baseurl=https://repo.vivaldi.com/archive/rpm/x86_64
+enabled=1
+gpgcheck=1
+gpgkey=https://repo.vivaldi.com/archive/linux_signing_key.pub
+EOF
+    fi
+    run_cmd "sudo dnf install -y vivaldi-stable"
+}
+
+# 🦉 Opera Browser
+install_opera_browser() {
+    echo -e "${YELLOW}🦉 Installing Opera Browser...${RESET}"
+    if command -v opera &>/dev/null; then
+        echo -e "${GREEN}✅ Opera is already installed.${RESET}"
+        return
+    fi
+    if ! repo_exists "opera"; then
+        sudo tee /etc/yum.repos.d/opera.repo > /dev/null <<EOF
+[opera]
+name=Opera packages
+type=rpm-md
+baseurl=https://rpm.opera.com/rpm
+gpgcheck=1
+gpgkey=https://rpm.opera.com/rpmrepo.key
+enabled=1
+EOF
+    fi
+    run_cmd "sudo dnf install -y opera-stable"
+}
+
+# 🐺 LibreWolf Browser
+install_librewolf_browser() {
+    echo -e "${YELLOW}🐺 Installing LibreWolf (Native RPM)...${RESET}"
+    if command -v librewolf &>/dev/null; then
+        echo -e "${GREEN}✅ LibreWolf is already installed.${RESET}"
+        return
+    fi
+    if ! repo_exists "librewolf"; then
+        echo -e "${CYAN}🔧 Adding LibreWolf repository...${RESET}"
+        curl -fsSL https://repo.librewolf.net/librewolf.repo | pkexec tee /etc/yum.repos.d/librewolf.repo > /dev/null
+    fi
+    run_cmd "sudo dnf install -y librewolf"
 }
 
 # ──────────────────────────────────────────────────────────────
@@ -201,7 +284,12 @@ swap_ffmpeg_with_proprietary
 upgrade_system
 ensure_flatpak_support
 install_gear_lever
-# install_edge_flatpak
+install_brave_browser
+# install_chrome_browser
+# install_edge_browser
+# install_vivaldi_browser
+# install_opera_browser
+# install_librewolf_browser
 install_yt_dlp_and_aria2c
 install_brave_browser
 enable_fstrim
