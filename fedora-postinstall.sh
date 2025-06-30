@@ -71,7 +71,6 @@ add_third_party_repos() {
 remove_firefox() {
     echo -e "${YELLOW}🧹 Removing Firefox...${RESET}"
     run_cmd "sudo dnf remove -y firefox"
-    # run_cmd "rm -rf ~/.mozilla ~/.cache/mozilla"
     echo -e "${GREEN}✅ Cleanup complete.${RESET}"
 }
 
@@ -116,7 +115,18 @@ ensure_flatpak_support() {
 }
 
 # ──────────────────────────────────────────────────────────────
-# 🎬 7. Install yt-dlp + aria2
+# 🧰 7. Install Gear Lever (AppImage Manager)
+install_gear_lever() {
+    echo -e "${YELLOW}🧰 Installing Gear Lever (AppImage Manager)...${RESET}"
+    if ! flatpak list | grep -q it.mijorus.gearlever; then
+        run_cmd "flatpak install -y flathub it.mijorus.gearlever"
+    else
+        echo -e "${GREEN}✅ Gear Lever is already installed.${RESET}"
+    fi
+}
+
+# ──────────────────────────────────────────────────────────────
+# 🎬 8. Install yt-dlp + aria2
 install_yt_dlp_and_aria2c() {
     echo -e "${YELLOW}🎬 Installing yt-dlp and aria2...${RESET}"
     run_cmd "sudo dnf install -y yt-dlp aria2"
@@ -124,7 +134,7 @@ install_yt_dlp_and_aria2c() {
 }
 
 # ──────────────────────────────────────────────────────────────
-# 🦁 8. Install Brave browser
+# 🦁 9. Install Brave browser
 install_brave_browser() {
     echo -e "${YELLOW}🦁 Installing Brave Browser...${RESET}"
     if ! command -v brave-browser &>/dev/null; then
@@ -134,7 +144,7 @@ install_brave_browser() {
     fi
 }
 
-# 🦁 8. Install Brave browser via Flatpak
+# 🦁 9. Alternative: Brave browser via Flatpak
 install_brave_flatpak() {
     echo -e "${YELLOW}🦁 Checking for Brave Browser (Flatpak)...${RESET}"
     if ! flatpak list | grep -q com.brave.Browser; then
@@ -148,7 +158,7 @@ install_brave_flatpak() {
 }
 
 # ──────────────────────────────────────────────────────────────
-# 🧊 9. Enable fstrim.timer
+# 🧊 10. Enable fstrim.timer
 enable_fstrim() {
     echo -e "${YELLOW}🧊 Enabling fstrim.timer...${RESET}"
     if ! systemctl is-enabled fstrim.timer &>/dev/null; then
@@ -159,7 +169,7 @@ enable_fstrim() {
 }
 
 # ──────────────────────────────────────────────────────────────
-# 🧼 10. Clean system
+# 🧼 11. Clean system
 post_install_cleanup() {
     echo -e "${YELLOW}🧼 Final cleanup...${RESET}"
     run_cmd "sudo dnf autoremove -y"
@@ -187,6 +197,7 @@ remove_firefox
 swap_ffmpeg_with_proprietary
 upgrade_system
 ensure_flatpak_support
+install_gear_lever
 #install_brave_flatpak
 install_yt_dlp_and_aria2c
 install_brave_browser
