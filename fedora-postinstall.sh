@@ -134,13 +134,16 @@ install_yt_dlp_and_aria2c() {
 }
 
 # ──────────────────────────────────────────────────────────────
-# 🦁 9. Install Brave browser
-install_brave_browser() {
-    echo -e "${YELLOW}🦁 Installing Brave Browser...${RESET}"
-    if ! command -v brave-browser &>/dev/null; then
-        run_cmd "curl -fsS https://dl.brave.com/install.sh | sh"
+# 🪟 9. Alternative: Install Microsoft Edge via Flatpak
+install_edge_flatpak() {
+    echo -e "${YELLOW}🪟 Checking for Microsoft Edge (Flatpak)...${RESET}"
+    if ! flatpak list | grep -q com.microsoft.Edge; then
+        echo -e "${YELLOW}📦 Installing Microsoft Edge (Flatpak)...${RESET}"
+        if ! run_cmd "flatpak install -y flathub com.microsoft.Edge"; then
+            echo -e "${RED}❌ Failed to install Microsoft Edge. Continuing...${RESET}"
+        fi
     else
-        echo -e "${GREEN}✅ Brave is already installed.${RESET}"
+        echo -e "${GREEN}✅ Microsoft Edge is already installed.${RESET}"
     fi
 }
 
@@ -198,7 +201,7 @@ swap_ffmpeg_with_proprietary
 upgrade_system
 ensure_flatpak_support
 install_gear_lever
-#install_librewolf_flatpak
+# install_edge_flatpak
 install_yt_dlp_and_aria2c
 install_brave_browser
 enable_fstrim
