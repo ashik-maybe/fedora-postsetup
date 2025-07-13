@@ -48,6 +48,6 @@ sudo -v || { echo -e "${RED}❌ Sudo required. Exiting.${RESET}"; exit 1; }
 
 install_virtualization_packages
 enable_libvirtd_service
-# add_user_to_libvirt_group
+add_user_to_libvirt_group
 
 echo -e "${GREEN}🎉 Virt-Manager & KVM setup complete!${RESET}"
