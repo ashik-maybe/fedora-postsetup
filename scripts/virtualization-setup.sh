@@ -33,11 +33,16 @@ enable_libvirtd_service() {
     echo -e "${GREEN}✅ libvirtd is active and enabled at boot.${RESET}"
 }
 
-# 👤 Add current user to libvirt group
+# 👤 Add current user to libvirt group (if not already a member)
 add_user_to_libvirt_group() {
-    echo -e "${YELLOW}👤 Adding user '$USER' to libvirt group...${RESET}"
-    run_cmd "sudo usermod -aG libvirt $USER"
-    echo -e "${GREEN}✅ You may need to log out and log back in for group changes to take effect.${RESET}"
+    echo -e "${YELLOW}👤 Checking if user '$USER' is in the 'libvirt' group...${RESET}"
+    if id -nG "$USER" | grep -qw "libvirt"; then
+        echo -e "${GREEN}✅ User '$USER' is already in the 'libvirt' group.${RESET}"
+    else
+        echo -e "${YELLOW}👤 Adding user '$USER' to libvirt group...${RESET}"
+        run_cmd "sudo usermod -aG libvirt $USER"
+        echo -e "${GREEN}✅ Added. You may need to log out and log back in for group changes to take effect.${RESET}"
+    fi
 }
 
 # ──────────────────────────────────────────────────────────────
