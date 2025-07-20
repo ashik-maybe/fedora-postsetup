@@ -31,8 +31,9 @@ install_brave() {
         echo -e "${GREEN}✅ Brave is already installed.${RESET}"
         return
     fi
-
-    run_cmd "curl -fsS https://dl.brave.com/install.sh | sh"
+    run_cmd "sudo dnf install -y dnf-plugins-core"
+    run_cmd "sudo dnf config-manager --add-repo https://brave.com/brave-browser.repo"
+    run_cmd "sudo dnf install -y brave-browser"
 }
 
 install_chrome() {
