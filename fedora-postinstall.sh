@@ -45,7 +45,7 @@ add_third_party_repos() {
     echo -e "${YELLOW}🌐 Adding RPM Fusion repositories...${RESET}"
 
     if ! repo_exists "rpmfusion-free" || ! repo_exists "rpmfusion-nonfree"; then
-        run_cmd "sudo dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-\$(rpm -E %fedora).noarch.rpm https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-\$(rpm -E %fedora).noarch.rpm"
+        run_cmd "sudo dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-  \$(rpm -E %fedora).noarch.rpm https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-  \$(rpm -E %fedora).noarch.rpm"
     else
         echo -e "${GREEN}✅ RPM Fusion already present.${RESET}"
     fi
@@ -58,28 +58,35 @@ remove_firefox() {
     echo -e "${GREEN}✅ Firefox removed.${RESET}"
 }
 
-# 🎞️ 4. Swap ffmpeg-free with proprietary ffmpeg
+# 📝 4. Remove LibreOffice
+remove_libreoffice() {
+    echo -e "${YELLOW}📝 Removing LibreOffice...${RESET}"
+    run_cmd "sudo dnf remove -y libreoffice-*"
+    echo -e "${GREEN}✅ LibreOffice removed.${RESET}"
+}
+
+# 🎞️ 5. Swap ffmpeg-free with proprietary ffmpeg
 swap_ffmpeg_with_proprietary() {
     echo -e "${YELLOW}🎞️ Swapping ffmpeg-free with proprietary ffmpeg...${RESET}"
     run_cmd "sudo dnf swap ffmpeg-free ffmpeg --allowerasing -y"
     echo -e "${GREEN}✅ Proprietary ffmpeg installed.${RESET}"
 }
 
-# ⬆️ 5. System upgrade
+# ⬆️ 6. System upgrade
 upgrade_system() {
     echo -e "${YELLOW}⬆️ Upgrading system...${RESET}"
     run_cmd "sudo dnf upgrade -y"
     echo -e "${GREEN}✅ System upgraded.${RESET}"
 }
 
-# 🎬 6. Install yt-dlp + aria2
+# 🎬 7. Install yt-dlp + aria2
 install_yt_dlp_and_aria2c() {
     echo -e "${YELLOW}🎬 Installing yt-dlp and aria2...${RESET}"
     run_cmd "sudo dnf install -y yt-dlp aria2"
     echo -e "${GREEN}✅ yt-dlp and aria2 ready.${RESET}"
 }
 
-# 🧊 7. Enable fstrim.timer
+# 🧊 8. Enable fstrim.timer
 enable_fstrim() {
     echo -e "${YELLOW}🧊 Enabling fstrim.timer...${RESET}"
     if ! systemctl is-enabled fstrim.timer &>/dev/null; then
@@ -89,7 +96,7 @@ enable_fstrim() {
     fi
 }
 
-# 🧼 8. Clean system
+# 🧼 9. Clean system
 post_install_cleanup() {
     echo -e "${YELLOW}🧼 Final cleanup...${RESET}"
     run_cmd "sudo dnf autoremove -y"
@@ -113,6 +120,7 @@ trap 'kill $KEEP_SUDO_PID' EXIT
 optimize_dnf_conf
 add_third_party_repos
 remove_firefox
+remove_libreoffice
 swap_ffmpeg_with_proprietary
 upgrade_system
 install_yt_dlp_and_aria2c
