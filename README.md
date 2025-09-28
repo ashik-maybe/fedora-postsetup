@@ -1,6 +1,6 @@
 # scripts to run after a fresh fedora workstation installation
 
-## fyi
+### fyi
 
 `run-this-before-fedora-postinstall.sh` cuts down on packages (like alot) to upgrade + remove amd / nvidia drivers, if only igpu is present.
 
