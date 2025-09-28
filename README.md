@@ -13,9 +13,9 @@ installing docker after installing virt-manager messes up internet connections o
 ```bash
 git clone https://github.com/ashik-maybe/fedora-fresh-installation-scripts.git
 cd fedora-fresh-installation-scripts
-chmod +x *.sh
-./fedora-postinstall.sh
 ```
+
+then `./` the `.sh` file.
 
 #### note to self
 
