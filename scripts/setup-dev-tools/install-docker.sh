@@ -110,27 +110,6 @@ echo -e "${GREEN}To use Docker without sudo, you need to log out and log back in
 echo -e "${GREEN}  newgrp docker${NC}"
 echo ""
 
-# Ask if user wants Podman Desktop GUI
-echo -e "${GREEN}Optional: Podman Desktop provides a GUI for container management${NC}"
-read -r -n 1 -p "Do you want to install Podman Desktop GUI? (Y/n): " REPLY
-echo
-if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
-    echo -e "${YELLOW}Installing Podman Desktop (GUI for container management)...${NC}"
-
-    # Check if Flatpak is available
-    if command -v flatpak &> /dev/null; then
-        echo -e "${YELLOW}Using Flatpak to install Podman Desktop...${NC}"
-        flatpak install -y flathub io.podman_desktop.PodmanDesktop
-    else
-        echo -e "${YELLOW}Flatpak not found. Installing Flatpak first...${NC}"
-        sudo dnf install -y flatpak
-        flatpak install -y flathub io.podman_desktop.PodmanDesktop
-    fi
-
-    echo -e "${GREEN}Podman Desktop installed! You can launch it from your applications menu.${NC}"
-    echo -e "${GREEN}It will automatically detect and manage your Docker installation.${NC}"
-fi
-
 # Post-installation recommendations
 echo ""
 echo -e "${GREEN}Recommended next steps:${NC}"
