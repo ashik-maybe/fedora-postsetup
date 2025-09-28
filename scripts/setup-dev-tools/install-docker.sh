@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # install-docker.sh - Script to install Docker Engine on Fedora
+# https://docs.docker.com/engine/install/fedora/
 
 set -e  # Exit on any error
 
