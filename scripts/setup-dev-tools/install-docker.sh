@@ -34,7 +34,7 @@ fi
 if command -v podman &> /dev/null; then
     echo -e "${YELLOW}Podman is currently installed on your system.${NC}"
     echo -e "${YELLOW}Having both Docker and Podman can cause conflicts.${NC}"
-    read -p "Do you want to remove Podman before installing Docker? (Y/n): " -n 1 -r
+    read -r -n 1 -p "Do you want to remove Podman before installing Docker? (Y/n): " REPLY
     echo
     if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
         echo -e "${YELLOW}Removing Podman...${NC}"
@@ -64,8 +64,6 @@ sudo dnf -y install dnf-plugins-core
 
 # Add Docker repository
 echo -e "${YELLOW}Adding Docker repository...${NC}"
-
-echo -e "${YELLOW}Configuring Docker repository...${NC}"
 sudo tee /etc/yum.repos.d/docker-ce.repo > /dev/null <<EOF
 [docker-ce-stable]
 name=Docker CE Stable - \$basearch
@@ -114,7 +112,7 @@ echo ""
 
 # Ask if user wants Podman Desktop GUI
 echo -e "${GREEN}Optional: Podman Desktop provides a GUI for container management${NC}"
-read -p "Do you want to install Podman Desktop GUI? (Y/n): " -n 1 -r
+read -r -n 1 -p "Do you want to install Podman Desktop GUI? (Y/n): " REPLY
 echo
 if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
     echo -e "${YELLOW}Installing Podman Desktop (GUI for container management)...${NC}"
@@ -145,7 +143,7 @@ if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
 fi
 
 # Optional: Configure Docker daemon settings
-read -p "Do you want to configure Docker daemon settings? (y/N): " -n 1 -r
+read -r -n 1 -p "Do you want to configure Docker daemon settings? (y/N): " REPLY
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo -e "${YELLOW}Configuring Docker daemon...${NC}"
