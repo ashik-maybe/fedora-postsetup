@@ -117,9 +117,6 @@ echo -e "${GREEN}1. Log out and log back in to apply group changes${NC}"
 echo -e "${GREEN}2. Test Docker: docker run hello-world${NC}"
 echo -e "${GREEN}3. Check Docker version: docker --version${NC}"
 echo -e "${GREEN}4. Check Docker Compose: docker compose version${NC}"
-if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
-    echo -e "${GREEN}5. Launch Podman Desktop from your applications menu${NC}"
-fi
 
 # Optional: Configure Docker daemon settings
 read -r -n 1 -p "Do you want to configure Docker daemon settings? (y/N): " REPLY
