@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 # install-docker.sh - Script to install Docker Engine on Fedora
-# https://docs.docker.com/engine/install/fedora/
 
 set -e  # Exit on any error
 
@@ -39,7 +38,7 @@ if command -v podman &> /dev/null; then
     echo
     if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
         echo -e "${YELLOW}Removing Podman...${NC}"
-        sudo dnf remove -y podman podman-plugins podman-compose
+        sudo dnf remove -y podman podman-plugins podman-compose toolbox
     else
         echo -e "${YELLOW}Warning: Keeping both Docker and Podman may cause conflicts.${NC}"
     fi
@@ -65,7 +64,21 @@ sudo dnf -y install dnf-plugins-core
 
 # Add Docker repository
 echo -e "${YELLOW}Adding Docker repository...${NC}"
-sudo dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
+
+echo -e "${YELLOW}Configuring Docker repository...${NC}"
+sudo tee /etc/yum.repos.d/docker-ce.repo > /dev/null <<EOF
+[docker-ce-stable]
+name=Docker CE Stable - \$basearch
+baseurl=https://download.docker.com/linux/fedora/\$releasever/\$basearch/stable
+enabled=1
+metadata_expire=1d
+gpgcheck=1
+gpgkey=https://download.docker.com/linux/fedora/gpg
+EOF
+
+# Update package cache
+echo -e "${YELLOW}Updating package cache...${NC}"
+sudo dnf makecache
 
 # Install Docker Engine
 echo -e "${YELLOW}Installing Docker Engine...${NC}"
