@@ -1,36 +1,22 @@
-# 🚀 Fedora Fresh Installation Scripts
+# scripts to run after a fresh fedora workstation installation
 
-A collection of sleek, automated scripts to set up and optimize **Fedora Workstation** after a fresh install.
+## fyi
 
----
+`run-this-before-fedora-postinstall.sh` cuts down on packages (like alot) to upgrade + remove amd / nvidia drivers, if only igpu is present.
 
-## ✨ Features
+`fedora-postinstall.sh` optimizes dnf configs, adds rpm-fusion, swaps ffmpeg-free with non-free one, upgrades system, enables fstrim for ssd.
 
-- ⚙️ **System Optimization** — DNF tweaks, SSD trim, cleanup
-- 🧰 **Essential Tools** — yt-dlp, aria2, GNOME Tweaks, virt-manager
-- 🌐 **3rd-Party Repos** — RPM Fusion, VS Code, GitHub Desktop, Chrome
-- 🛡️ **Cloudflare WARP** — Easy install & config
-- 🌍 **Browser Setup** — Chrome & Brave with optional Wayland support
-- 📦 **Flatpak Support** — Flathub ready out of the box
-- 💬 **Interactive & Modular** — Choose what to install, skip what you don't
+installing docker after installing virt-manager messes up internet connections of vms! running `fix-for-docker-virt-manager-network-zone.sh` might solve the issue.
 
----
-
-## 📁 What's Inside
-
-| File                         | Purpose                                  |
-|-----------------------------|------------------------------------------|
-| `fedora-postinstall.sh`     | Main post-install script (automated)     |
-| `fedora-dev-setup.sh`       | Dev tools setup: Github Desktop, VS Code |
-| `force-browsers-wayland.sh` | Optional Wayland tweaks for browsers     |
-| `*.desktop`                 | Custom launchers for Wayland support     |
-
----
-
-## 🚦 Quick Start
+### just paste this in the terminal
 
 ```bash
 git clone https://github.com/ashik-maybe/fedora-fresh-installation-scripts.git
 cd fedora-fresh-installation-scripts
 chmod +x *.sh
 ./fedora-postinstall.sh
+```
+
+#### note to self
+
+don't fix it, don't upgrade it, just don't touch it! just leave it be! **don't fix it if ain't broke.**
