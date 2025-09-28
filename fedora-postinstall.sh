@@ -117,8 +117,8 @@ trap 'kill $KEEP_SUDO_PID' EXIT
 # Execute all configuration steps
 optimize_dnf_conf
 add_third_party_repos
-# remove_firefox
-# remove_libreoffice
+remove_firefox
+remove_libreoffice
 swap_ffmpeg_with_proprietary
 upgrade_system
 install_yt_dlp_and_aria2c
