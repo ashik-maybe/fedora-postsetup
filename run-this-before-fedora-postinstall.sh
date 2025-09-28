@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Fedora Pre-Installation Optimizations for HP EliteBook 840 G3
+# Fedora Pre-Installation Optimizations
 # Run this BEFORE fedora-postinstall.sh
 
 set -euo pipefail
