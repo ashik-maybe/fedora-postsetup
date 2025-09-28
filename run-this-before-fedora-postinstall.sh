@@ -101,6 +101,8 @@ if [[ $run_package_removal == true ]]; then
         "totem"
         "gnome-characters"
         "gnome-calendar"
+        "mediawriter"
+        "simple-scan"
     )
 
     for pkg in "${packages_to_remove[@]}"; do
