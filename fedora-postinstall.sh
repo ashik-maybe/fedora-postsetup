@@ -121,7 +121,7 @@ remove_firefox
 remove_libreoffice
 swap_ffmpeg_with_proprietary
 upgrade_system
-install_yt_dlp_and_aria2c
+# install_yt_dlp_and_aria2c
 enable_fstrim
 post_install_cleanup
 
