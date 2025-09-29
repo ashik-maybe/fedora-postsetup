@@ -103,6 +103,10 @@ if [[ $run_package_removal == true ]]; then
         "gnome-calendar"
         "mediawriter"
         "simple-scan"
+        "gnome-connections"
+        "gnome-backgrounds"
+        "gnome-tour"
+        "baobab"
     )
 
     for pkg in "${packages_to_remove[@]}"; do
