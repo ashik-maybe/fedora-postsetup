@@ -6,7 +6,7 @@
 
 `fedora-postinstall.sh` optimizes dnf configs, adds rpm-fusion, swaps ffmpeg-free with non-free one, upgrades system, enables fstrim for ssd.
 
-installing docker after installing virt-manager messes up internet connections of vms! running `fix-for-docker-virt-manager-network-zone.sh` might solve the issue.
+refrain from installing docker in a system that has virt-manager (virutalization) installed, it messes up the vm internet connection, go for `podman`.
 
 ### just paste this in the terminal
 
