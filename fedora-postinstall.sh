@@ -6,9 +6,9 @@
 # This script applies optimizations for a cleaner OS.
 #
 # Usage:
-#   sudo ./fedora-ultimate-setup.sh
-#   sudo ./fedora-ultimate-setup.sh --yes   # auto-confirm everything
-#   ./fedora-ultimate-setup.sh --dry-run   # preview without changes
+#   sudo ./fedora-postinstall.sh
+#   sudo ./fedora-postinstall.sh --yes   # auto-confirm everything
+#   ./fedora-postinstall.sh --dry-run   # preview without changes
 #
 set -euo pipefail
 IFS=$'\n\t'
@@ -47,9 +47,10 @@ confirm_or_exit() {
 
 ensure_root() {
   if [ "$(id -u)" -ne 0 ]; then
-    error "This script requires root privileges. Re-run with sudo."
-    exit 1
+    info "This script requires root privileges. Attempting to re-run with sudo..."
+    exec sudo "$0" "$@"
   fi
+  # If we get here, we are root
 }
 
 safe_eval() {
@@ -66,13 +67,14 @@ while [ $# -gt 0 ]; do
     --dry-run) DRY_RUN=true; shift ;;
     --yes|-y|--assume-yes) AUTO_YES=true; shift ;;
     --help|-h)
-      echo "Usage: sudo $SCRIPT_NAME [--dry-run] [--yes]"
+      echo "Usage: $SCRIPT_NAME [--dry-run] [--yes]"
       exit 0 ;;
     *) warn "Unknown option: $1"; shift ;;
   esac
 done
 
-ensure_root # Ensure root privileges early
+# Ensure root privileges early, passing original arguments
+ensure_root "$@"
 
 ### Configuration ###
 REPOS_TO_REMOVE=(
@@ -192,10 +194,10 @@ action_add_third_party_repos() {
   fedora_ver=$(rpm -E %fedora)
 
   if ! repo_file_matches "rpmfusion-free" >/dev/null; then
-    safe_eval "dnf install -y https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-\$(rpm -E %fedora).noarch.rpm"
+    safe_eval "dnf install -y https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-${fedora_ver}.noarch.rpm"
   fi
   if ! repo_file_matches "rpmfusion-nonfree" >/dev/null; then
-    safe_eval "dnf install -y https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-\$(rpm -E %fedora).noarch.rpm"
+    safe_eval "dnf install -y https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-${fedora_ver}.noarch.rpm"
   fi
   success "RPM Fusion repos ready."
 }
