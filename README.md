@@ -21,11 +21,11 @@ sudo dnf remove nvidia-gpu-firmware
 
 1.  Clone the repository:
     ```bash
-    git clone https://github.com/ashik-maybe/fedora-fresh-install-scripts.git
+    git clone https://github.com/ashik-maybe/fedora-postsetup.git
     ```
 2.  Navigate to the directory:
     ```bash
-    cd fedora-fresh-install-scripts
+    cd fedora-postsetup
     ```
 3.  Run the script:
     ```bash
