@@ -1,32 +1,27 @@
 #!/usr/bin/env bash
 #
-# Fedora Post Setup Script
-# Target: Fedora Workstation (and other mutable Fedora flavors)
+# Fedora Workstation Post installation Script
 #
 # This script applies optimizations for a cleaner OS.
-# This version runs ALL tasks automatically after gaining root privileges.
 #
 set -euo pipefail
 IFS=$'\n\t'
 
 SCRIPT_NAME="$(basename "$0")"
 DRY_RUN=false
-AUTO_YES=true # Always auto-confirm everything
+AUTO_YES=true
 
-### Colors / UX ###
 if [ -t 1 ]; then
   RED=$'\e[31m'; GREEN=$'\e[32m'; YELLOW=$'\e[33m'; BLUE=$'\e[34m'; BOLD=$'\e[1m'; NORMAL=$'\e[0m'
 else
   RED=''; GREEN=''; YELLOW=''; BLUE=''; BOLD=''; NORMAL=''
 fi
 
-# Removed logging functions
 info() { printf '%b %s\n' "${BLUE}[INFO]${NORMAL} $*"; }
 success() { printf '%b %s\n' "${GREEN}[OK]${NORMAL} $*"; }
 warn() { printf '%b %s\n' "${YELLOW}[WARN]${NORMAL} $*"; }
 error() { printf '%b %s\n' "${RED}[ERROR]${NORMAL} $*"; }
 
-# Always proceed if AUTO_YES is true, otherwise prompt
 confirm_or_exit() {
   local prompt="${1:-Proceed? (y/N): }"
   if $AUTO_YES; then
@@ -45,9 +40,9 @@ confirm_or_exit() {
 ensure_root() {
   if [ "$(id -u)" -ne 0 ]; then
     info "This script requires root privileges. Attempting to re-run with sudo..."
-    exec sudo "$0" "$@"
+    export FEDORA_SETUP_CONFIRMED=1
+    exec sudo env FEDORA_SETUP_CONFIRMED="$FEDORA_SETUP_CONFIRMED" "$0" "$@"
   fi
-  # If we get here, we are root
 }
 
 safe_eval() {
@@ -58,7 +53,6 @@ safe_eval() {
   eval "$@"
 }
 
-### CLI parsing ###
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run) DRY_RUN=true; shift ;;
@@ -69,37 +63,62 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-# Ensure root privileges early, passing original arguments
+if [ -z "${FEDORA_SETUP_CONFIRMED:-}" ]; then
+  echo "${BOLD}Fedora Lean Setup${NORMAL}"
+  echo "This script will perform the following actions automatically:"
+  echo "  - Clean up specific repositories"
+  echo "  - Remove a list of default packages (firefox*, libreoffice-*, gnome-*, etc.)"
+  echo "  - Optimize DNF configuration"
+  echo "  - Add RPM Fusion repositories"
+  echo "  - Swap ffmpeg-free for ffmpeg"
+  echo "  - Upgrade the system"
+  echo "  - Enable fstrim.timer"
+  echo "  - Perform post-install cleanup"
+  echo ""
+
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "It requires root privileges via 'sudo'."
+  else
+    echo "Running with root privileges."
+  fi
+
+  read -p "Do you wish to proceed? (y/N): " -n 1 -r REPLY
+  echo
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+      info "User aborted."
+      exit 0
+  fi
+fi
+
 ensure_root "$@"
 
-### Configuration ###
 REPOS_TO_REMOVE=(
   "_copr:copr.fedorainfracloud.org:phracek:PyCharm"
-  "rpmfusion-nonfree-nvidia-driver"
-  "rpmfusion-nonfree-steam"
   "fedora-cisco-openh264"
   "google-chrome"
+  "rpmfusion-nonfree-nvidia-driver"
+  "rpmfusion-nonfree-steam"
 )
 
-# List of packages to remove
 PACKAGES_TO_REMOVE=(
-  "firefox*"
-  "libreoffice-*"
-  "gnome-boxes"
-  "gnome-contacts"
-  "gnome-maps"
-  "gnome-weather"
-  "evolution"
-  "rhythmbox"
-  "totem"
-  "gnome-characters"
-  "gnome-calendar"
-  "mediawriter"
-  "simple-scan"
-  "gnome-connections"
-  "gnome-backgrounds"
-  "gnome-tour"
-  "baobab"
+"baobab"
+"evolution"
+"firefox*"
+"gnome-abrt"
+"gnome-backgrounds"
+"gnome-calendar"
+"gnome-boxes"
+"gnome-characters"
+"gnome-connections"
+"gnome-contacts"
+"gnome-maps"
+"gnome-tour"
+"gnome-weather"
+"libreoffice-*"
+"mediawriter"
+"rhythmbox"
+"simple-scan"
+"totem"
 )
 
 DNF_CONF_CONTENT=$(cat <<'EOF'
@@ -119,7 +138,6 @@ errorlevel=1
 EOF
 )
 
-### Helpers ###
 repo_file_matches() {
   local pattern="$1"
   for repofile in /etc/yum.repos.d/*.repo; do
@@ -130,7 +148,6 @@ repo_file_matches() {
   done
 }
 
-### Actions ###
 action_repo_cleanup() {
   info "Cleaning up repositories..."
   for pattern in "${REPOS_TO_REMOVE[@]}"; do
@@ -154,8 +171,11 @@ action_package_removal() {
   info "Attempting to remove packages..."
   echo "Packages to remove (or already removed):"
   for p in "${PACKAGES_TO_REMOVE[@]}"; do echo "  - $p"; done
-  # No confirmation prompt anymore, as AUTO_YES is true
-  safe_eval "dnf remove -y ${PACKAGES_TO_REMOVE[*]}"
+  local cmd="dnf remove -y"
+  for pkg in "${PACKAGES_TO_REMOVE[@]}"; do
+    cmd+=" $pkg"
+  done
+  safe_eval "$cmd"
   success "Package removal attempt completed."
 }
 
@@ -169,20 +189,17 @@ action_optimize_dnf_conf() {
   echo "$DNF_CONF_CONTENT" > /etc/dnf/dnf.conf
   chmod 644 /etc/dnf/dnf.conf
   success "dnf.conf updated."
+  # safe_eval "dnf clean all"
+  # success "DNF cache cleared after config update."
 }
 
 action_add_third_party_repos() {
-  info "Adding RPM Fusion repos if missing..."
+  info "Adding RPM Fusion repos using official commands..."
   local fedora_ver
   fedora_ver=$(rpm -E %fedora)
-
-  if ! repo_file_matches "rpmfusion-free" >/dev/null; then
-    safe_eval "dnf install -y https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-${fedora_ver}.noarch.rpm"
-  fi
-  if ! repo_file_matches "rpmfusion-nonfree" >/dev/null; then
-    safe_eval "dnf install -y https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-${fedora_ver}.noarch.rpm"
-  fi
-  success "RPM Fusion repos ready."
+  safe_eval "dnf install -y https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-${fedora_ver}.noarch.rpm"
+  safe_eval "dnf install -y https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-${fedora_ver}.noarch.rpm"
+  success "RPM Fusion repos added."
 }
 
 action_swap_ffmpeg() {
@@ -215,16 +232,6 @@ action_post_cleanup() {
   success "Cleanup done."
 }
 
-action_clean_dnf_cache() {
-  info "Cleaning dnf cache..."
-  safe_eval "dnf clean all"
-  success "Cache cleaned."
-}
-
-### Run ALL actions automatically ###
-info "Starting Fedora Lean Setup with ALL actions enabled."
-info "No further input required. This will run all tasks."
-
 start=$(date +%s)
 
 action_repo_cleanup
@@ -235,9 +242,22 @@ action_swap_ffmpeg
 action_system_upgrade
 action_enable_fstrim
 action_post_cleanup
-action_clean_dnf_cache
 
 end=$(date +%s)
 elapsed=$((end-start))
-success "Fedora Lean Setup completed in ${elapsed}s."
+
+hours=$((elapsed / 3600))
+minutes=$(( (elapsed % 3600) / 60 ))
+seconds=$((elapsed % 60))
+
+time_str=""
+if [ $hours -gt 0 ]; then
+    time_str="${hours}h "
+fi
+if [ $minutes -gt 0 ]; then
+    time_str="${time_str}${minutes}m "
+fi
+time_str="${time_str}${seconds}s"
+
+success "Fedora Workstation optimizations completed in ${time_str}."
 info "Script finished. Reboot recommended."
