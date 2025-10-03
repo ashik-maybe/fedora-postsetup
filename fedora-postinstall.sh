@@ -236,7 +236,7 @@ action_clean_dnf_cache() {
 }
 
 ### Interactive menu ###
-echo "${BOLD}Fedora Ultimate Setup${NORMAL}"
+echo "${BOLD}Fedora Lean Setup${NORMAL}"
 echo "Target: Fedora Workstation (also works on other Fedora editions)."
 echo
 echo "Available actions:"
