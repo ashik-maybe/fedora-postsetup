@@ -1,29 +1,33 @@
-# scripts to run after a fresh fedora workstation installation
+# Fedora Workstation Post Insatall Scripts
 
-> At the very 1st boot, after installation; `Enable Third-Party Repositories`
+Scripts to run after a fresh Fedora Workstation installation.
 
-### fyi
+> [IMPORTANT]
+> On the very first boot after installation, ensure `Enable Third-Party Repositories` is checked in the initial setup process.
 
-if you don't have external or internal AMD / Nvidia; remove them first, no point in upgrading unneeded packages;
+### FYI
+
+If you only use an Intel iGPU, there's no need to keep AMD or NVIDIA GPU firmware updated. Removing them can save space and upgrade time:
 
 ```bash
 sudo dnf remove amd-gpu-firmware
 sudo dnf remove nvidia-gpu-firmware
 ```
 
-`fedora-postinstall.sh` optimizes dnf configs, adds rpm-fusion, swaps ffmpeg-free with non-free one, upgrades system, enables fstrim for ssd.
+> [CAUTION]
+> Avoid installing `docker` on a system with `virt-manager` (virtualization) installed. It can interfere with VM network connections. Consider using `podman` instead.
 
-> refrain from installing `docker` in a system that has `virt-manager` (virutalization) installed, it messes up the vm internet connection, go for `podman`.
+### Usage
 
-### just paste this in the terminal
-
-```bash
-git clone https://github.com/ashik-maybe/fedora-fresh-installation-scripts.git
-cd fedora-fresh-installation-scripts
-```
-
-then `./` the `.sh` file.
-
-#### note to self
-
-don't fix it, don't upgrade it, just don't touch it! just leave it be! **don't fix it if ain't broke.**
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/ashik-maybe/fedora-fresh-install-scripts.git
+    ```
+2.  Navigate to the directory:
+    ```bash
+    cd fedora-fresh-install-scripts
+    ```
+3.  Run the script:
+    ```bash
+    ./fedora-postinstall-optimization.sh
+    ```
