@@ -14,7 +14,6 @@ set -euo pipefail
 IFS=$'\n\t'
 
 SCRIPT_NAME="$(basename "$0")"
-LOG_FILE="/var/log/${SCRIPT_NAME%.sh}.log"
 DRY_RUN=false
 AUTO_YES=false
 
@@ -25,11 +24,11 @@ else
   RED=''; GREEN=''; YELLOW=''; BLUE=''; BOLD=''; NORMAL=''
 fi
 
-log() { printf '%b %s\n' "$1" | tee -a "$LOG_FILE"; }
-info() { log "${BLUE}[INFO]${NORMAL} $*"; }
-success() { log "${GREEN}[OK]${NORMAL} $*"; }
-warn() { log "${YELLOW}[WARN]${NORMAL} $*"; }
-error() { log "${RED}[ERROR]${NORMAL} $*"; }
+# Removed logging functions
+info() { printf '%b %s\n' "${BLUE}[INFO]${NORMAL} $*"; }
+success() { printf '%b %s\n' "${GREEN}[OK]${NORMAL} $*"; }
+warn() { printf '%b %s\n' "${YELLOW}[WARN]${NORMAL} $*"; }
+error() { printf '%b %s\n' "${RED}[ERROR]${NORMAL} $*"; }
 
 confirm_or_exit() {
   local prompt="${1:-Proceed? (y/N): }"
@@ -73,8 +72,7 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-touch "$LOG_FILE" || { echo "Cannot write to $LOG_FILE"; exit 1; }
-ensure_root
+ensure_root # Ensure root privileges early
 
 ### Configuration ###
 REPOS_TO_REMOVE=(
@@ -190,11 +188,14 @@ action_optimize_dnf_conf() {
 
 action_add_third_party_repos() {
   info "Adding RPM Fusion repos if missing..."
+  local fedora_ver
+  fedora_ver=$(rpm -E %fedora)
+
   if ! repo_file_matches "rpmfusion-free" >/dev/null; then
-    safe_eval "dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-\$(rpm -E %fedora).noarch.rpm"
+    safe_eval "dnf install -y https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-\$(rpm -E %fedora).noarch.rpm"
   fi
   if ! repo_file_matches "rpmfusion-nonfree" >/dev/null; then
-    safe_eval "dnf install -y https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-\$(rpm -E %fedora).noarch.rpm"
+    safe_eval "dnf install -y https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-\$(rpm -E %fedora).noarch.rpm"
   fi
   success "RPM Fusion repos ready."
 }
@@ -308,5 +309,4 @@ ${ACTIONS[clean_dnf_cache]}   && action_clean_dnf_cache
 
 end=$(date +%s)
 elapsed=$((end-start))
-success "Fedora Ultimate Setup completed in ${elapsed}s."
-info "Log saved to $LOG_FILE"
+success "Fedora Lean Setup completed in ${elapsed}s."
