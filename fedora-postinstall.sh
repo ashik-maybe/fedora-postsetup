@@ -4,18 +4,14 @@
 # Target: Fedora Workstation (and other mutable Fedora flavors)
 #
 # This script applies optimizations for a cleaner OS.
-#
-# Usage:
-#   sudo ./fedora-postinstall.sh
-#   sudo ./fedora-postinstall.sh --yes   # auto-confirm everything
-#   ./fedora-postinstall.sh --dry-run   # preview without changes
+# This version runs ALL tasks automatically after gaining root privileges.
 #
 set -euo pipefail
 IFS=$'\n\t'
 
 SCRIPT_NAME="$(basename "$0")"
 DRY_RUN=false
-AUTO_YES=false
+AUTO_YES=true # Always auto-confirm everything
 
 ### Colors / UX ###
 if [ -t 1 ]; then
@@ -30,6 +26,7 @@ success() { printf '%b %s\n' "${GREEN}[OK]${NORMAL} $*"; }
 warn() { printf '%b %s\n' "${YELLOW}[WARN]${NORMAL} $*"; }
 error() { printf '%b %s\n' "${RED}[ERROR]${NORMAL} $*"; }
 
+# Always proceed if AUTO_YES is true, otherwise prompt
 confirm_or_exit() {
   local prompt="${1:-Proceed? (y/N): }"
   if $AUTO_YES; then
@@ -65,9 +62,8 @@ safe_eval() {
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run) DRY_RUN=true; shift ;;
-    --yes|-y|--assume-yes) AUTO_YES=true; shift ;;
     --help|-h)
-      echo "Usage: $SCRIPT_NAME [--dry-run] [--yes]"
+      echo "Usage: $SCRIPT_NAME [--dry-run]"
       exit 0 ;;
     *) warn "Unknown option: $1"; shift ;;
   esac
@@ -78,13 +74,14 @@ ensure_root "$@"
 
 ### Configuration ###
 REPOS_TO_REMOVE=(
-  "copr:copr.fedorainfracloud.org/phracek/PyCharm"
+  "_copr:copr.fedorainfracloud.org:phracek:PyCharm"
   "rpmfusion-nonfree-nvidia-driver"
   "rpmfusion-nonfree-steam"
   "fedora-cisco-openh264"
   "google-chrome"
 )
 
+# List of packages to remove
 PACKAGES_TO_REMOVE=(
   "firefox*"
   "libreoffice-*"
@@ -133,10 +130,6 @@ repo_file_matches() {
   done
 }
 
-pkg_installed() {
-  dnf list installed "$1" &>/dev/null
-}
-
 ### Actions ###
 action_repo_cleanup() {
   info "Cleaning up repositories..."
@@ -158,22 +151,12 @@ action_repo_cleanup() {
 }
 
 action_package_removal() {
-  info "Checking packages to remove..."
-  declare -a to_remove=()
-  for pkg in "${PACKAGES_TO_REMOVE[@]}"; do
-    if pkg_installed "$pkg"; then
-      to_remove+=("$pkg")
-    fi
-  done
-  if [ ${#to_remove[@]} -eq 0 ]; then
-    info "No target packages installed."
-    return
-  fi
-  echo "Packages to remove:"
-  for p in "${to_remove[@]}"; do echo "  - $p"; done
-  confirm_or_exit "Remove these packages? (y/N): "
-  safe_eval "dnf remove -y ${to_remove[*]}"
-  success "Package removal done."
+  info "Attempting to remove packages..."
+  echo "Packages to remove (or already removed):"
+  for p in "${PACKAGES_TO_REMOVE[@]}"; do echo "  - $p"; done
+  # No confirmation prompt anymore, as AUTO_YES is true
+  safe_eval "dnf remove -y ${PACKAGES_TO_REMOVE[*]}"
+  success "Package removal attempt completed."
 }
 
 action_optimize_dnf_conf() {
@@ -238,77 +221,23 @@ action_clean_dnf_cache() {
   success "Cache cleaned."
 }
 
-### Interactive menu ###
-echo "${BOLD}Fedora Lean Setup${NORMAL}"
-echo "Target: Fedora Workstation (also works on other Fedora editions)."
-echo
-echo "Available actions:"
-echo " 1) Repository cleanup"
-echo " 2) Package removal"
-echo " 3) Optimize DNF config"
-echo " 4) Add RPM Fusion repos"
-echo " 5) Swap ffmpeg-free -> ffmpeg"
-echo " 6) System upgrade"
-echo " 7) Enable fstrim.timer"
-echo " 8) Post-install cleanup"
-echo " 9) Clean dnf cache"
-echo
-
-declare -A ACTIONS=(
-  [repo_cleanup]=false
-  [package_removal]=false
-  [optimize_dnf_conf]=false
-  [add_third_party_repos]=false
-  [swap_ffmpeg]=false
-  [upgrade_system]=false
-  [enable_fstrim]=false
-  [post_cleanup]=false
-  [clean_dnf_cache]=false
-)
-
-if ! $AUTO_YES && ! $DRY_RUN; then
-  printf "Select actions (e.g. '1 3 6' or 'all'): "
-  read -r selection
-  if [[ "$selection" =~ ^[Aa]ll$ ]]; then
-    for k in "${!ACTIONS[@]}"; do ACTIONS[$k]=true; done
-  else
-    for num in $selection; do
-      case "$num" in
-        1) ACTIONS[repo_cleanup]=true ;;
-        2) ACTIONS[package_removal]=true ;;
-        3) ACTIONS[optimize_dnf_conf]=true ;;
-        4) ACTIONS[add_third_party_repos]=true ;;
-        5) ACTIONS[swap_ffmpeg]=true ;;
-        6) ACTIONS[upgrade_system]=true ;;
-        7) ACTIONS[enable_fstrim]=true ;;
-        8) ACTIONS[post_cleanup]=true ;;
-        9) ACTIONS[clean_dnf_cache]=true ;;
-      esac
-    done
-  fi
-else
-  for k in "${!ACTIONS[@]}"; do ACTIONS[$k]=true; done
-fi
-
-echo
-info "Summary of selected actions:"
-for k in "${!ACTIONS[@]}"; do printf "  %-20s : %s\n" "$k" "${ACTIONS[$k]}"; done
-echo
-
-confirm_or_exit "Proceed with these actions? (y/N): "
+### Run ALL actions automatically ###
+info "Starting Fedora Lean Setup with ALL actions enabled."
+info "No further input required. This will run all tasks."
 
 start=$(date +%s)
 
-${ACTIONS[repo_cleanup]}      && action_repo_cleanup
-${ACTIONS[package_removal]}   && action_package_removal
-${ACTIONS[optimize_dnf_conf]} && action_optimize_dnf_conf
-${ACTIONS[add_third_party_repos]} && action_add_third_party_repos
-${ACTIONS[swap_ffmpeg]}       && action_swap_ffmpeg
-${ACTIONS[upgrade_system]}    && action_system_upgrade
-${ACTIONS[enable_fstrim]}     && action_enable_fstrim
-${ACTIONS[post_cleanup]}      && action_post_cleanup
-${ACTIONS[clean_dnf_cache]}   && action_clean_dnf_cache
+action_repo_cleanup
+action_package_removal
+action_optimize_dnf_conf
+action_add_third_party_repos
+action_swap_ffmpeg
+action_system_upgrade
+action_enable_fstrim
+action_post_cleanup
+action_clean_dnf_cache
 
 end=$(date +%s)
 elapsed=$((end-start))
 success "Fedora Lean Setup completed in ${elapsed}s."
+info "Script finished. Reboot recommended."
