@@ -1,5 +1,7 @@
 # scripts to run after a fresh fedora workstation installation
 
+> At the very 1st boot, after installation; `Enable Third-Party Repositories`
+
 ### fyi
 
 if you don't have external or internal AMD / Nvidia; remove them first, no point in upgrading unneeded packages;
