@@ -1,21 +1,111 @@
 #!/usr/bin/env bash
-
+#
+# Fedora Post Setup Script
+# Target: Fedora Workstation (and other mutable Fedora flavors)
+#
+# This script applies optimizations for a cleaner OS.
+#
+# Usage:
+#   sudo ./fedora-ultimate-setup.sh
+#   sudo ./fedora-ultimate-setup.sh --yes   # auto-confirm everything
+#   ./fedora-ultimate-setup.sh --dry-run   # preview without changes
+#
 set -euo pipefail
+IFS=$'\n\t'
 
-# Helper functions
-run_cmd() {
-    echo "Executing: $1"
-    eval "$1"
+SCRIPT_NAME="$(basename "$0")"
+LOG_FILE="/var/log/${SCRIPT_NAME%.sh}.log"
+DRY_RUN=false
+AUTO_YES=false
+
+### Colors / UX ###
+if [ -t 1 ]; then
+  RED=$'\e[31m'; GREEN=$'\e[32m'; YELLOW=$'\e[33m'; BLUE=$'\e[34m'; BOLD=$'\e[1m'; NORMAL=$'\e[0m'
+else
+  RED=''; GREEN=''; YELLOW=''; BLUE=''; BOLD=''; NORMAL=''
+fi
+
+log() { printf '%b %s\n' "$1" | tee -a "$LOG_FILE"; }
+info() { log "${BLUE}[INFO]${NORMAL} $*"; }
+success() { log "${GREEN}[OK]${NORMAL} $*"; }
+warn() { log "${YELLOW}[WARN]${NORMAL} $*"; }
+error() { log "${RED}[ERROR]${NORMAL} $*"; }
+
+confirm_or_exit() {
+  local prompt="${1:-Proceed? (y/N): }"
+  if $AUTO_YES; then
+    info "Auto-confirm enabled; proceeding."
+    return 0
+  fi
+  printf "%s" "$prompt"
+  read -r -n1 REPLY
+  echo
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    error "User aborted."
+    exit 1
+  fi
 }
 
-repo_exists() {
-    grep -q "\[$1\]" /etc/yum.repos.d/*.repo &>/dev/null
+ensure_root() {
+  if [ "$(id -u)" -ne 0 ]; then
+    error "This script requires root privileges. Re-run with sudo."
+    exit 1
+  fi
 }
 
-# 1. Optimize DNF configuration
-optimize_dnf_conf() {
-    echo "Optimizing DNF configuration..."
-    sudo tee /etc/dnf/dnf.conf > /dev/null <<EOF
+safe_eval() {
+  if $DRY_RUN; then
+    info "[dry-run] $*"
+    return 0
+  fi
+  eval "$@"
+}
+
+### CLI parsing ###
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --dry-run) DRY_RUN=true; shift ;;
+    --yes|-y|--assume-yes) AUTO_YES=true; shift ;;
+    --help|-h)
+      echo "Usage: sudo $SCRIPT_NAME [--dry-run] [--yes]"
+      exit 0 ;;
+    *) warn "Unknown option: $1"; shift ;;
+  esac
+done
+
+touch "$LOG_FILE" || { echo "Cannot write to $LOG_FILE"; exit 1; }
+ensure_root
+
+### Configuration ###
+REPOS_TO_REMOVE=(
+  "copr:copr.fedorainfracloud.org/phracek/PyCharm"
+  "rpmfusion-nonfree-nvidia-driver"
+  "rpmfusion-nonfree-steam"
+  "fedora-cisco-openh264"
+  "google-chrome"
+)
+
+PACKAGES_TO_REMOVE=(
+  "firefox*"
+  "libreoffice-*"
+  "gnome-boxes"
+  "gnome-contacts"
+  "gnome-maps"
+  "gnome-weather"
+  "evolution"
+  "rhythmbox"
+  "totem"
+  "gnome-characters"
+  "gnome-calendar"
+  "mediawriter"
+  "simple-scan"
+  "gnome-connections"
+  "gnome-backgrounds"
+  "gnome-tour"
+  "baobab"
+)
+
+DNF_CONF_CONTENT=$(cat <<'EOF'
 [main]
 gpgcheck=True
 installonly_limit=3
@@ -30,101 +120,193 @@ keepcache=False
 color=auto
 errorlevel=1
 EOF
-    echo "DNF configuration optimized successfully."
-}
+)
 
-# 2. Add third-party repositories (RPM Fusion)
-add_third_party_repos() {
-    echo "Adding RPM Fusion repositories..."
-
-    if ! repo_exists "rpmfusion-free" || ! repo_exists "rpmfusion-nonfree"; then
-        run_cmd "sudo dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm"
-    else
-        echo "RPM Fusion repositories already present."
+### Helpers ###
+repo_file_matches() {
+  local pattern="$1"
+  for repofile in /etc/yum.repos.d/*.repo; do
+    [ -e "$repofile" ] || continue
+    if [[ $(basename "$repofile") =~ $pattern ]] || grep -qiE "$pattern" "$repofile"; then
+      echo "$repofile"
     fi
+  done
 }
 
-# 3. Remove Firefox
-remove_firefox() {
-    echo "Removing Firefox..."
-    run_cmd "sudo dnf remove -y firefox"
-    echo "Firefox removed successfully."
+pkg_installed() {
+  dnf list installed "$1" &>/dev/null
 }
 
-# 4. Remove LibreOffice
-remove_libreoffice() {
-    echo "Removing LibreOffice..."
-    run_cmd "sudo dnf remove -y libreoffice-*"
-    echo "LibreOffice removed successfully."
-}
-
-# 5. Swap ffmpeg-free with proprietary ffmpeg
-swap_ffmpeg_with_proprietary() {
-    echo "Swapping ffmpeg-free with proprietary ffmpeg..."
-    run_cmd "sudo dnf swap ffmpeg-free ffmpeg --allowerasing -y"
-    echo "Proprietary ffmpeg installed successfully."
-}
-
-# 6. System upgrade
-upgrade_system() {
-    echo "Upgrading system packages..."
-    run_cmd "sudo dnf upgrade -y"
-    echo "System upgrade completed."
-}
-
-# 7. Install yt-dlp and aria2
-install_yt_dlp_and_aria2c() {
-    echo "Installing yt-dlp and aria2..."
-    run_cmd "sudo dnf install -y yt-dlp aria2"
-    echo "yt-dlp and aria2 installed successfully."
-}
-
-# 8. Enable fstrim.timer for SSD optimization
-enable_fstrim() {
-    echo "Enabling fstrim.timer for SSD optimization..."
-    if ! systemctl is-enabled fstrim.timer &>/dev/null; then
-        run_cmd "sudo systemctl enable --now fstrim.timer"
-    else
-        echo "fstrim.timer is already enabled."
+### Actions ###
+action_repo_cleanup() {
+  info "Cleaning up repositories..."
+  for pattern in "${REPOS_TO_REMOVE[@]}"; do
+    matches=$(repo_file_matches "$pattern" || true)
+    if [ -z "$matches" ]; then
+      info "No repo match for '$pattern'"
+      continue
     fi
+    for file in $matches; do
+      if $DRY_RUN; then
+        info "[dry-run] rm '$file'"
+      else
+        rm -f "$file" && success "Removed $file"
+      fi
+    done
+  done
+  success "Repository cleanup done."
 }
 
-# 9. Post-installation cleanup
-post_install_cleanup() {
-    echo "Performing post-installation cleanup..."
-    run_cmd "sudo dnf autoremove -y"
-    if command -v flatpak &>/dev/null; then
-        run_cmd "flatpak uninstall --unused -y"
+action_package_removal() {
+  info "Checking packages to remove..."
+  declare -a to_remove=()
+  for pkg in "${PACKAGES_TO_REMOVE[@]}"; do
+    if pkg_installed "$pkg"; then
+      to_remove+=("$pkg")
     fi
-    echo "Post-installation cleanup completed."
+  done
+  if [ ${#to_remove[@]} -eq 0 ]; then
+    info "No target packages installed."
+    return
+  fi
+  echo "Packages to remove:"
+  for p in "${to_remove[@]}"; do echo "  - $p"; done
+  confirm_or_exit "Remove these packages? (y/N): "
+  safe_eval "dnf remove -y ${to_remove[*]}"
+  success "Package removal done."
 }
 
-# Main execution
-clear
-echo "Fedora Core Post-Installation Setup"
-echo "=================================="
-echo "This script will configure your Fedora system with optimal settings."
+action_optimize_dnf_conf() {
+  info "Overwriting /etc/dnf/dnf.conf with optimized config."
+  if $DRY_RUN; then
+    info "[dry-run] would overwrite /etc/dnf/dnf.conf"
+    printf '%s\n' "$DNF_CONF_CONTENT" | sed 's/^/    /'
+    return
+  fi
+  echo "$DNF_CONF_CONTENT" > /etc/dnf/dnf.conf
+  chmod 644 /etc/dnf/dnf.conf
+  success "dnf.conf updated."
+}
+
+action_add_third_party_repos() {
+  info "Adding RPM Fusion repos if missing..."
+  if ! repo_file_matches "rpmfusion-free" >/dev/null; then
+    safe_eval "dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-\$(rpm -E %fedora).noarch.rpm"
+  fi
+  if ! repo_file_matches "rpmfusion-nonfree" >/dev/null; then
+    safe_eval "dnf install -y https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-\$(rpm -E %fedora).noarch.rpm"
+  fi
+  success "RPM Fusion repos ready."
+}
+
+action_swap_ffmpeg() {
+  info "Swapping ffmpeg-free -> ffmpeg..."
+  safe_eval "dnf swap -y ffmpeg-free ffmpeg --allowerasing" || warn "Swap failed or unnecessary."
+}
+
+action_system_upgrade() {
+  info "Upgrading system..."
+  safe_eval "dnf upgrade -y"
+  success "System upgraded."
+}
+
+action_enable_fstrim() {
+  info "Enabling fstrim.timer..."
+  if systemctl is-enabled fstrim.timer &>/dev/null; then
+    info "Already enabled."
+  else
+    safe_eval "systemctl enable --now fstrim.timer"
+    success "fstrim.timer enabled."
+  fi
+}
+
+action_post_cleanup() {
+  info "Cleaning unused packages and flatpaks..."
+  safe_eval "dnf autoremove -y"
+  if command -v flatpak &>/dev/null; then
+    safe_eval "flatpak uninstall --unused -y"
+  fi
+  success "Cleanup done."
+}
+
+action_clean_dnf_cache() {
+  info "Cleaning dnf cache..."
+  safe_eval "dnf clean all"
+  success "Cache cleaned."
+}
+
+### Interactive menu ###
+echo "${BOLD}Fedora Ultimate Setup${NORMAL}"
+echo "Target: Fedora Workstation (also works on other Fedora editions)."
+echo
+echo "Available actions:"
+echo " 1) Repository cleanup"
+echo " 2) Package removal"
+echo " 3) Optimize DNF config"
+echo " 4) Add RPM Fusion repos"
+echo " 5) Swap ffmpeg-free -> ffmpeg"
+echo " 6) System upgrade"
+echo " 7) Enable fstrim.timer"
+echo " 8) Post-install cleanup"
+echo " 9) Clean dnf cache"
 echo
 
-# Check for sudo privileges
-sudo -v || { echo "Error: Sudo privileges required. Exiting."; exit 1; }
+declare -A ACTIONS=(
+  [repo_cleanup]=false
+  [package_removal]=false
+  [optimize_dnf_conf]=false
+  [add_third_party_repos]=false
+  [swap_ffmpeg]=false
+  [upgrade_system]=false
+  [enable_fstrim]=false
+  [post_cleanup]=false
+  [clean_dnf_cache]=false
+)
 
-# Keep sudo alive during execution
-( while true; do sudo -n true; sleep 60; done ) 2>/dev/null &
-KEEP_SUDO_PID=$!
-trap 'kill $KEEP_SUDO_PID' EXIT
-
-# Execute all configuration steps
-optimize_dnf_conf
-add_third_party_repos
-remove_firefox
-remove_libreoffice
-swap_ffmpeg_with_proprietary
-upgrade_system
-# install_yt_dlp_and_aria2c
-enable_fstrim
-post_install_cleanup
+if ! $AUTO_YES && ! $DRY_RUN; then
+  printf "Select actions (e.g. '1 3 6' or 'all'): "
+  read -r selection
+  if [[ "$selection" =~ ^[Aa]ll$ ]]; then
+    for k in "${!ACTIONS[@]}"; do ACTIONS[$k]=true; done
+  else
+    for num in $selection; do
+      case "$num" in
+        1) ACTIONS[repo_cleanup]=true ;;
+        2) ACTIONS[package_removal]=true ;;
+        3) ACTIONS[optimize_dnf_conf]=true ;;
+        4) ACTIONS[add_third_party_repos]=true ;;
+        5) ACTIONS[swap_ffmpeg]=true ;;
+        6) ACTIONS[upgrade_system]=true ;;
+        7) ACTIONS[enable_fstrim]=true ;;
+        8) ACTIONS[post_cleanup]=true ;;
+        9) ACTIONS[clean_dnf_cache]=true ;;
+      esac
+    done
+  fi
+else
+  for k in "${!ACTIONS[@]}"; do ACTIONS[$k]=true; done
+fi
 
 echo
-echo "Fedora core setup completed successfully."
-echo "You can now run additional modular configuration scripts as needed."
+info "Summary of selected actions:"
+for k in "${!ACTIONS[@]}"; do printf "  %-20s : %s\n" "$k" "${ACTIONS[$k]}"; done
+echo
+
+confirm_or_exit "Proceed with these actions? (y/N): "
+
+start=$(date +%s)
+
+${ACTIONS[repo_cleanup]}      && action_repo_cleanup
+${ACTIONS[package_removal]}   && action_package_removal
+${ACTIONS[optimize_dnf_conf]} && action_optimize_dnf_conf
+${ACTIONS[add_third_party_repos]} && action_add_third_party_repos
+${ACTIONS[swap_ffmpeg]}       && action_swap_ffmpeg
+${ACTIONS[upgrade_system]}    && action_system_upgrade
+${ACTIONS[enable_fstrim]}     && action_enable_fstrim
+${ACTIONS[post_cleanup]}      && action_post_cleanup
+${ACTIONS[clean_dnf_cache]}   && action_clean_dnf_cache
+
+end=$(date +%s)
+elapsed=$((end-start))
+success "Fedora Ultimate Setup completed in ${elapsed}s."
+info "Log saved to $LOG_FILE"
