@@ -2,7 +2,12 @@
 
 ### fyi
 
-`run-this-before-fedora-postinstall.sh` cuts down on packages (like alot) to upgrade + remove amd / nvidia drivers, if only igpu is present.
+if you don't have external or internal AMD / Nvidia; remove them with;
+
+```bash
+sudo dnf remove amd-gpu-firmware
+sudo dnf remove nvidia-gpu-firmware
+```
 
 `fedora-postinstall.sh` optimizes dnf configs, adds rpm-fusion, swaps ffmpeg-free with non-free one, upgrades system, enables fstrim for ssd.
 
