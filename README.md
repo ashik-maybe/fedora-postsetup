@@ -11,7 +11,7 @@ sudo dnf remove nvidia-gpu-firmware
 
 `fedora-postinstall.sh` optimizes dnf configs, adds rpm-fusion, swaps ffmpeg-free with non-free one, upgrades system, enables fstrim for ssd.
 
-refrain from installing docker in a system that has virt-manager (virutalization) installed, it messes up the vm internet connection, go for `podman`.
+refrain from installing `docker` in a system that has `virt-manager` (virutalization) installed, it messes up the vm internet connection, go for `podman`.
 
 ### just paste this in the terminal
 
