@@ -2,7 +2,7 @@
 
 ### fyi
 
-if you don't have external or internal AMD / Nvidia; remove them with;
+if you don't have external or internal AMD / Nvidia; remove them first, no point in upgrading unneeded packages;
 
 ```bash
 sudo dnf remove amd-gpu-firmware
