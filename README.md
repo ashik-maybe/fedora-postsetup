@@ -5,14 +5,18 @@ Scripts to run after a fresh Fedora Workstation installation.
 > ⚠️ **[IMPORTANT]**
 > On the very first boot after installation, ensure **`Enable Third-Party Repositories`** is checked in the initial setup process.
 
-### 💡 FYI
+<details>
 
-If you only use an Intel iGPU, there's no need to keep AMD or NVIDIA GPU firmware updated. Removing them can save space and upgrade time:
+<summary> 💡 FYI: GPU Firmware Cleanup </summary>
+
+If you only use an **Intel iGPU**, there's no need to keep AMD or NVIDIA GPU firmware updated. Removing them can save space and upgrade time:
 
 ```bash
 sudo dnf remove amd-gpu-firmware
 sudo dnf remove nvidia-gpu-firmware
 ```
+
+</details>
 
 > 🚫 **[CAUTION]**
 > Avoid installing `docker` on a system with `virt-manager` (virtualization) installed. It can interfere with VM network connections. Consider using `podman` instead.
