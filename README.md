@@ -1,5 +1,7 @@
 # 🐧 Fedora Workstation Post Insatall Scripts
 
+[![Fedora Workstation](https://img.shields.io/badge/Fedora%20Workstation-42-blue)](#)
+
 Scripts to run after a fresh Fedora Workstation installation.
 
 > ⚠️ **[IMPORTANT]**
