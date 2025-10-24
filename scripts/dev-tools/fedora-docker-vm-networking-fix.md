@@ -142,12 +142,6 @@ Because `virbr0` is managed by **libvirt**, not Docker. Docker expects full cont
 
 ---
 
-Absolutely, Md—crediting sources is not just respectful, it’s README gold 🌟. Here's how you can elegantly include the Arch Wiki reference in your guide:
-
----
-
-## 📚 References & Credits
-
 <details>
 <summary>📚 References & Credits</summary>
 
