@@ -22,8 +22,8 @@ sudo dnf remove nvidia-gpu-firmware
 </details>
 
 > 🚫 **[CAUTION]**
-> Avoid installing `docker` on a system with `virt-manager` (virtualization) installed. It can interfere with VM network connections. Consider using `podman` instead.
-> [Possible Fix](https://wiki.archlinux.org/title/Docker#Starting_Docker_breaks_KVM_bridged_networking)
+> Installing `docker` on a system with `virt-manager` (virtualization) installed can interfere with VM network connections.
+> 📘 [Fix Docker vs Virt-Manager Networking Conflict](scripts/dev-tools/fedora-docker-vm-networking-fix.md)
 
 ### ▶️ Usage
 
