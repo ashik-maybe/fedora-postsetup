@@ -2,7 +2,7 @@
 
 ## 🐧 TL;DR
 
-If you installed Docker *after* virt-manager/QEMU, your VMs might lose internet access. Docker rewrites firewall rules (`iptables`) that block libvirt’s virtual bridge (`virbr0`). This guide shows how to patch that safely so **both Docker containers and VMs can access the internet**.
+If you installed Docker _after_ virt-manager/QEMU, your VMs might lose internet access. Docker rewrites firewall rules (`iptables`) that block libvirt’s virtual bridge (`virbr0`). This guide shows how to patch that safely so **both Docker containers and VMs can access the internet**.
 
 ---
 
@@ -51,6 +51,11 @@ Without these, Docker’s firewall rules block VM traffic.
 
 ---
 
+## ⚠️ DO NOT MAKE IT PERSISTENT
+
+It **will** break Docker's internet access.
+
+<!--
 ## 🔁 Make It Persistent (Optional but Recommended)
 
 ### Option 1: Save with `iptables-services`
@@ -111,7 +116,7 @@ Enable it:
 sudo systemctl enable qemu-netfix.service
 ```
 
----
+--- -->
 
 ## 🧼 Bonus: Check Your Interfaces
 
@@ -134,11 +139,11 @@ Because `virbr0` is managed by **libvirt**, not Docker. Docker expects full cont
 
 ## 🧪 Verified Working Setup
 
-| Component     | Bridge Used | Internet Access | Notes                     |
-|---------------|-------------|------------------|----------------------------|
-| Docker        | `docker0`   | ✅               | Default setup              |
-| QEMU VMs      | `virbr0`    | ✅               | After patching `iptables` |
-| Host Wi-Fi    | `wlp2s0`    | ✅               | Shared outbound interface  |
+| Component  | Bridge Used | Internet Access | Notes                     |
+| ---------- | ----------- | --------------- | ------------------------- |
+| Docker     | `docker0`   | ✅              | Default setup             |
+| QEMU VMs   | `virbr0`    | ✅              | After patching `iptables` |
+| Host Wi-Fi | `wlp2s0`    | ✅              | Shared outbound interface |
 
 ---
 
