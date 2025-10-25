@@ -119,7 +119,12 @@ PACKAGES_TO_REMOVE=(
 "rhythmbox"
 "simple-scan"
 "totem"
-# "gnome-software"
+"seahorse"
+"gnome-font-viewer"
+"gnome-disk-utility"
+"yelp"
+"gnome-user-docs"
+"gnome-software"
 )
 
 DNF_CONF_CONTENT=$(cat <<'EOF'
