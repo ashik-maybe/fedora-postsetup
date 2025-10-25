@@ -119,6 +119,7 @@ PACKAGES_TO_REMOVE=(
 "rhythmbox"
 "simple-scan"
 "totem"
+# "gnome-software"
 )
 
 DNF_CONF_CONTENT=$(cat <<'EOF'
