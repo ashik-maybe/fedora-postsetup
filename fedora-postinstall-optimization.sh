@@ -125,6 +125,7 @@ PACKAGES_TO_REMOVE=(
 "yelp"
 "gnome-user-docs"
 "gnome-software"
+"showtime"
 )
 
 DNF_CONF_CONTENT=$(cat <<'EOF'
