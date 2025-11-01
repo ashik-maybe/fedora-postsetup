@@ -1,14 +1,94 @@
 #!/usr/bin/env bash
+#
+# install-docker.sh - Install or Remove Docker Engine on Fedora
+#
+# Usage:
+#   ./install-docker.sh        → installs Docker
+#   ./install-docker.sh -r     → completely removes Docker & restores system
+#
 
-# install-docker.sh - Script to install Docker Engine on Fedora
-
-set -e  # Exit on any error
+set -e  # Exit on error
 
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
+
+# ---------------------------------------------------------------------------
+#  FUNCTIONS
+# ---------------------------------------------------------------------------
+
+remove_docker() {
+    echo -e "${RED}WARNING: This will completely remove Docker, all containers, images, volumes, and configurations!${NC}"
+    read -r -n 1 -p "Are you sure you want to remove Docker completely? (y/N): " CONFIRM
+    echo
+    if [[ ! $CONFIRM =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}Aborting removal. No changes made.${NC}"
+        exit 0
+    fi
+
+    echo -e "${YELLOW}Removing Docker and cleaning up...${NC}"
+
+    # Stop Docker services if active
+    if systemctl is-active --quiet docker; then
+        sudo systemctl stop docker
+    fi
+    if systemctl is-active --quiet docker.socket; then
+        sudo systemctl stop docker.socket
+    fi
+
+    # Remove Docker packages
+    echo -e "${YELLOW}Uninstalling Docker packages...${NC}"
+    sudo dnf remove -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin || true
+
+    # Remove legacy Docker packages
+    sudo dnf remove -y docker docker-client docker-common docker-latest docker-latest-logrotate \
+        docker-logrotate docker-selinux docker-engine-selinux docker-engine || true
+
+    # Remove Docker data & configs
+    echo -e "${YELLOW}Removing Docker configuration and data...${NC}"
+    sudo rm -rf /var/lib/docker /var/lib/containerd /etc/docker /etc/yum.repos.d/docker-ce.repo
+
+    # Remove docker group if exists
+    if getent group docker > /dev/null; then
+        echo -e "${YELLOW}Removing docker group...${NC}"
+        sudo groupdel docker || true
+    fi
+
+    # Clean up user-level Docker data
+    echo -e "${YELLOW}Cleaning up user Docker files...${NC}"
+    sudo rm -rf ~/.docker || true
+
+    # Autoremove unneeded dependencies
+    echo -e "${YELLOW}Autoremoving unused dependencies...${NC}"
+    sudo dnf autoremove -y || true
+
+    echo -e "${GREEN}Docker removed successfully.${NC}"
+
+    # Offer to reinstall Podman
+    read -r -n 1 -p "Do you want to reinstall Podman? (Y/n): " REPLY
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
+        echo -e "${YELLOW}Reinstalling Podman...${NC}"
+        sudo dnf install -y podman podman-plugins podman-compose toolbox
+        echo -e "${GREEN}Podman reinstalled.${NC}"
+    else
+        echo -e "${YELLOW}Skipping Podman reinstall.${NC}"
+    fi
+
+    echo -e "${GREEN}System restored to pre-Docker state.${NC}"
+    exit 0
+}
+
+# ---------------------------------------------------------------------------
+#  MAIN SCRIPT
+# ---------------------------------------------------------------------------
+
+# Reverse/uninstall mode
+if [[ "$1" == "-r" ]]; then
+    remove_docker
+fi
 
 echo -e "${GREEN}Installing Docker Engine on Fedora${NC}"
 
@@ -18,7 +98,7 @@ if [[ $EUID -eq 0 ]]; then
    exit 1
 fi
 
-# Check if Fedora version is supported
+# Check Fedora version
 echo -e "${YELLOW}Checking Fedora version...${NC}"
 if ! grep -q "Fedora" /etc/os-release; then
     echo -e "${RED}This script is designed for Fedora only.${NC}"
@@ -30,7 +110,7 @@ if [[ $FEDORA_VERSION -lt 41 ]]; then
     echo -e "${YELLOW}Warning: Docker recommends Fedora 41 or newer. Current version: $FEDORA_VERSION${NC}"
 fi
 
-# Check if Podman is installed and ask user what to do
+# Podman check
 if command -v podman &> /dev/null; then
     echo -e "${YELLOW}Podman is currently installed on your system.${NC}"
     echo -e "${YELLOW}Having both Docker and Podman can cause conflicts.${NC}"
@@ -46,23 +126,14 @@ fi
 
 # Remove old Docker versions
 echo -e "${YELLOW}Removing old Docker versions...${NC}"
-sudo dnf remove -y \
-    docker \
-    docker-client \
-    docker-client-latest \
-    docker-common \
-    docker-latest \
-    docker-latest-logrotate \
-    docker-logrotate \
-    docker-selinux \
-    docker-engine-selinux \
-    docker-engine || true
+sudo dnf remove -y docker docker-client docker-common docker-latest docker-latest-logrotate \
+    docker-logrotate docker-selinux docker-engine-selinux docker-engine || true
 
-# Install dnf-plugins-core for repository management
+# Install dnf-plugins-core
 echo -e "${YELLOW}Installing dnf-plugins-core...${NC}"
 sudo dnf -y install dnf-plugins-core
 
-# Add Docker repository
+# Add Docker repo
 echo -e "${YELLOW}Adding Docker repository...${NC}"
 sudo tee /etc/yum.repos.d/docker-ce.repo > /dev/null <<EOF
 [docker-ce-stable]
@@ -78,16 +149,11 @@ EOF
 echo -e "${YELLOW}Updating package cache...${NC}"
 sudo dnf makecache
 
-# Install Docker Engine
+# Install Docker
 echo -e "${YELLOW}Installing Docker Engine...${NC}"
-sudo dnf install -y \
-    docker-ce \
-    docker-ce-cli \
-    containerd.io \
-    docker-buildx-plugin \
-    docker-compose-plugin
+sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-# Start and enable Docker service
+# Start & enable service
 echo -e "${YELLOW}Starting Docker service...${NC}"
 sudo systemctl enable --now docker
 
@@ -104,51 +170,32 @@ fi
 echo -e "${YELLOW}Adding current user to docker group...${NC}"
 sudo usermod -aG docker $USER
 
-# Post-installation recommendations
+# Post-installation notes
 echo -e "${GREEN}Docker installation completed!${NC}"
-echo -e "${GREEN}To use Docker without sudo, you need to log out and log back in, or run:${NC}"
-echo -e "${GREEN}  newgrp docker${NC}"
-echo ""
-
-# Post-installation recommendations
-echo ""
+echo -e "${GREEN}To use Docker without sudo, run:${NC} newgrp docker"
+echo
 echo -e "${GREEN}Recommended next steps:${NC}"
-echo -e "${GREEN}1. Log out and log back in to apply group changes${NC}"
-echo -e "${GREEN}2. Test Docker: docker run hello-world${NC}"
-echo -e "${GREEN}3. Check Docker version: docker --version${NC}"
-echo -e "${GREEN}4. Check Docker Compose: docker compose version${NC}"
+echo " 1. Log out and back in to apply group changes"
+echo " 2. Test Docker: docker run hello-world"
+echo " 3. Check version: docker --version"
+echo " 4. Check Compose: docker compose version"
 
-# Optional: Configure Docker daemon settings
+# Optional daemon config
 read -r -n 1 -p "Do you want to configure Docker daemon settings? (y/N): " REPLY
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo -e "${YELLOW}Configuring Docker daemon...${NC}"
-
-    # Create daemon.json directory if it doesn't exist
     sudo mkdir -p /etc/docker
-
-    # Create a basic daemon configuration
-    cat > /tmp/daemon.json << 'EOF'
+    cat > /tmp/daemon.json <<'EOF'
 {
   "log-driver": "json-file",
-  "log-opts": {
-    "max-size": "10m",
-    "max-file": "3"
-  },
-  "default-ulimits": {
-    "nofile": {
-      "Hard": 64000,
-      "Name": "nofile",
-      "Soft": 64000
-    }
-  }
+  "log-opts": { "max-size": "10m", "max-file": "3" },
+  "default-ulimits": { "nofile": { "Name": "nofile", "Soft": 64000, "Hard": 64000 } }
 }
 EOF
-
     sudo cp /tmp/daemon.json /etc/docker/daemon.json
     sudo systemctl restart docker
-
-    echo -e "${GREEN}Docker daemon configured with basic settings${NC}"
+    echo -e "${GREEN}Docker daemon configured with basic settings.${NC}"
 fi
 
 echo -e "${GREEN}Installation complete!${NC}"
