@@ -1,10 +1,11 @@
 #!/bin/bash
 
 # install-cachyos-kernel.sh
-# Installs or removes CachyOS kernel + KSMD stack on Fedora Workstation
+# Installs, removes, or checks status of CachyOS kernel + KSMD stack on Fedora Workstation
 # Usage:
 #   ./install-cachyos-kernel.sh           → Install everything (after confirmation)
 #   ./install-cachyos-kernel.sh -r        → Remove everything (after confirmation)
+#   ./install-cachyos-kernel.sh -s        → Show current kernel and KSMD status
 
 set -e
 
@@ -94,9 +95,34 @@ function remove_everything() {
   echo "Removal complete. Reboot to switch back to your previous kernel."
 }
 
+function show_status() {
+  echo ""
+  echo "System Status Report"
+  echo "--------------------"
+  echo "Kernel version:"
+  uname -r
+  echo ""
+
+  echo "KSMD status:"
+  if command -v ksmctl &>/dev/null; then
+    sudo ksmctl --status
+  else
+    echo "ksmctl not found."
+  fi
+  echo ""
+
+  echo "Memory merge statistics:"
+  if command -v ksmstats &>/dev/null; then
+    ksmstats
+  else
+    echo "ksmstats not found."
+  fi
+  echo ""
+}
+
 # Main logic
-if [[ "$1" == "-r" ]]; then
-  remove_everything
-else
-  install_everything
-fi
+case "$1" in
+  -r) remove_everything ;;
+  -s|--status) show_status ;;
+  *) install_everything ;;
+esac
