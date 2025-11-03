@@ -28,34 +28,37 @@ KSMD_PACKAGES=(
   cachyos-ksm-settings
 )
 
-function confirm_action() {
-  local mode="$1"
+function confirm_install() {
   echo ""
-  if [[ "$mode" == "install" ]]; then
-    echo "This script will perform the following actions:"
-    echo "  - Enable COPR repositories for CachyOS kernel and addons"
-    echo "  - Install the GCC-compiled CachyOS kernel with BORE-EEVDF scheduler"
-    echo "  - Configure SELinux to allow kernel module loading"
-    echo "  - Install KSMD stack for memory merging optimization"
-    echo "  - Automatically activate KSMD using 'ksmctl --enable'"
-    echo "  - Recommend reboot after installation"
-  elif [[ "$mode" == "remove" ]]; then
-    echo "This will remove the following components:"
-    echo "  - CachyOS kernel and development headers"
-    echo "  - KSMD stack and performance addons"
-    echo "  - COPR repositories for kernel and addons"
-  fi
+  echo "This script will perform the following actions:"
+  echo "  - Enable COPR repositories for CachyOS kernel and addons"
+  echo "  - Install the GCC-compiled CachyOS kernel with BORE-EEVDF scheduler"
+  echo "  - Configure SELinux to allow kernel module loading"
+  echo "  - Install KSMD stack for memory merging optimization"
+  echo "  - Automatically activate KSMD using 'ksmctl --enable'"
+  echo "  - Recommend reboot after installation"
   echo ""
-  read -rp "Do you want to proceed? [y/N]: " confirm
+  read -rp "Do you want to proceed with installation? [y/N]: " confirm
+  [[ "$confirm" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 1; }
+}
+
+function confirm_removal() {
+  echo ""
+  echo "This will remove the following components:"
+  echo "  - CachyOS kernel and development headers"
+  echo "  - KSMD stack and performance addons"
+  echo "  - COPR repositories for kernel and addons"
+  echo ""
+  read -rp "Are you sure you want to remove everything? [y/N]: " confirm
   [[ "$confirm" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 1; }
 }
 
 function install_everything() {
-  confirm_action "install"
+  confirm_install
 
   echo "Enabling COPR repositories..."
-  sudo dnf copr enable --copr-auto-confirm "$KERNEL_REPO"
-  sudo dnf copr enable --copr-auto-confirm "$ADDONS_REPO"
+  sudo dnf copr enable -y "$KERNEL_REPO"
+  sudo dnf copr enable -y "$ADDONS_REPO"
 
   echo "Installing CachyOS kernel..."
   sudo dnf install -y "${KERNEL_PACKAGES[@]}"
@@ -80,7 +83,7 @@ function install_everything() {
 }
 
 function remove_everything() {
-  confirm_action "remove"
+  confirm_removal
 
   echo "Removing CachyOS kernel and KSMD stack..."
   sudo dnf remove -y "${KERNEL_PACKAGES[@]}" "${KSMD_PACKAGES[@]}"
