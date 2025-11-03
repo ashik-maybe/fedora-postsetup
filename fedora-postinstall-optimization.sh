@@ -126,6 +126,10 @@ PACKAGES_TO_REMOVE=(
 "gnome-user-docs"
 "gnome-software"
 "showtime"
+"gnome-shell-extension-apps-menu"
+"gnome-shell-extension-launch-new-instance"
+"gnome-shell-extension-places-menu"
+"gnome-shell-extension-window-list"
 )
 
 DNF_CONF_CONTENT=$(cat <<'EOF'
