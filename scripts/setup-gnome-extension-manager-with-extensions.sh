@@ -77,7 +77,7 @@ install_gnome_extensions() {
         #"gnome-shell-extension-dash-to-dock"
         #"gnome-shell-extension-caffeine"
         #"gnome-shell-extension-forge"
-        "gnome-shell-extension-gsconnect"
+        # "gnome-shell-extension-gsconnect"
     )
 
     for extension in "${extensions[@]}"; do
