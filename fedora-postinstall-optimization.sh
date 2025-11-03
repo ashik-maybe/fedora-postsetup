@@ -131,6 +131,9 @@ PACKAGES_TO_REMOVE=(
 "simple-scan"
 "totem"
 "yelp"
+"decibels"
+"snapshot"
+"gnome-logs"
 )
 
 DNF_CONF_CONTENT=$(cat <<'EOF'
