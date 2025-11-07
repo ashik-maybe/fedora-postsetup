@@ -122,7 +122,6 @@ PACKAGES_TO_REMOVE=(
 "gnome-shell-extension-places-menu"
 "gnome-shell-extension-window-list"
 "gnome-software"
-"gnome-text-editor"
 "gnome-tour"
 "gnome-user-docs"
 "gnome-weather"
