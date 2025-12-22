@@ -137,6 +137,8 @@ PACKAGES_TO_REMOVE=(
 "snapshot"
 "gnome-logs"
 # for COSMIC desktop
+"cosmic-store"
+"cosmic-player"
 "thunderbird"
 "okular"
 "ark"
