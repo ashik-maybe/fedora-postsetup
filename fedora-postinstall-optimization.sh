@@ -140,8 +140,6 @@ PACKAGES_TO_REMOVE=(
 "cosmic-store"
 "cosmic-player"
 "thunderbird"
-"okular"
-"ark"
 "nheko"
 )
 
