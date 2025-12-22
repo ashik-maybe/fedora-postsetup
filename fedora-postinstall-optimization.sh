@@ -139,6 +139,7 @@ PACKAGES_TO_REMOVE=(
 # for COSMIC desktop
 "thunderbird"
 "okular"
+"ark"
 "nheko"
 )
 
