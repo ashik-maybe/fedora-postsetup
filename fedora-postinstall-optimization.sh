@@ -136,6 +136,10 @@ PACKAGES_TO_REMOVE=(
 "decibels"
 "snapshot"
 "gnome-logs"
+# for COSMIC desktop
+"thunderbird"
+"okular"
+"nheko"
 )
 
 DNF_CONF_CONTENT=$(cat <<'EOF'
