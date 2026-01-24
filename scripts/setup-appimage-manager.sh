@@ -1,24 +1,20 @@
 #!/usr/bin/env bash
-# install-appimage-manager.sh — Installs Gear Lever (AppImage manager) via Flatpak
+# setup-appimage.sh — Installs Gear Lever and FUSE support
 
 set -euo pipefail
 
-# ──────────────────────────────────────────────────────────────
 # 🎨 Colors
 CYAN="\033[0;36m"
 YELLOW="\033[0;33m"
 GREEN="\033[0;32m"
-RED="\033[0;31m"
 RESET="\033[0m"
 
-# ──────────────────────────────────────────────────────────────
 # 🛠️ Helpers
 run_cmd() {
     echo -e "${CYAN}🔧 Running: $1${RESET}"
     eval "$1"
 }
 
-# ──────────────────────────────────────────────────────────────
 # 📦 Ensure Flatpak
 ensure_flatpak() {
     echo -e "${YELLOW}📦 Checking Flatpak...${RESET}"
@@ -29,7 +25,6 @@ ensure_flatpak() {
     fi
 }
 
-# ──────────────────────────────────────────────────────────────
 # 🌍 Ensure Flathub
 ensure_flathub() {
     echo -e "${YELLOW}🌍 Checking Flathub...${RESET}"
@@ -40,7 +35,12 @@ ensure_flathub() {
     fi
 }
 
-# ──────────────────────────────────────────────────────────────
+# 🛠️ Ensure FUSE (Required for AppImages)
+ensure_fuse() {
+    echo -e "${YELLOW}🧬 Checking FUSE libraries...${RESET}"
+    run_cmd "sudo dnf install -y fuse-libs"
+}
+
 # ⚙️ Install Gear Lever
 install_gear_lever() {
     echo -e "${YELLOW}⚙️ Installing Gear Lever...${RESET}"
@@ -51,10 +51,10 @@ install_gear_lever() {
     fi
 }
 
-# ──────────────────────────────────────────────────────────────
 # ▶️ Run all
 ensure_flatpak
 ensure_flathub
+ensure_fuse
 install_gear_lever
 
-echo -e "${GREEN}🎉 Gear Lever setup complete.${RESET}"
+echo -e "${GREEN}🎉 AppImage support setup complete.${RESET}"
