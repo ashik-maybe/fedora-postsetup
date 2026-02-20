@@ -52,9 +52,21 @@ install_flatseal() {
 }
 
 # ──────────────────────────────────────────────────────────────
+# Install Warehouse
+install_warehouse() {
+    echo -e "${YELLOW}🛡 Installing Warehouse...${RESET}"
+    if ! flatpak list | grep -q io.github.flattool.Warehouse; then
+        run_cmd "flatpak install -y flathub io.github.flattool.Warehouse"
+    else
+        echo -e "${GREEN}✅ Warehouse already installed.${RESET}"
+    fi
+}
+
+# ──────────────────────────────────────────────────────────────
 # ▶️ Run all
 ensure_flatpak
 ensure_flathub
 install_flatseal
+install_warehouse
 
 echo -e "${GREEN}🎉 Flatpak support setup complete.${RESET}"
