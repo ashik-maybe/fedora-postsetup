@@ -9,7 +9,7 @@ IFS=$'\n\t'
 
 SCRIPT_NAME="$(basename "$0")"
 DRY_RUN=false
-AUTO_YES=true
+ORIGINAL_ARGS=("$@")
 
 if [ -t 1 ]; then
   RED=$'\e[31m'; GREEN=$'\e[32m'; YELLOW=$'\e[33m'; BLUE=$'\e[34m'; BOLD=$'\e[1m'; NORMAL=$'\e[0m'
@@ -29,21 +29,6 @@ info() { printf '%b %s\n' "${BLUE}[INFO]${NORMAL} $*"; }
 success() { printf '%b %s\n' "${GREEN}[OK]${NORMAL} $*"; }
 warn() { printf '%b %s\n' "${YELLOW}[WARN]${NORMAL} $*"; }
 error() { printf '%b %s\n' "${RED}[ERROR]${NORMAL} $*"; }
-
-confirm_or_exit() {
-  local prompt="${1:-Proceed? (y/N): }"
-  if $AUTO_YES; then
-    info "Auto-confirm enabled; proceeding."
-    return 0
-  fi
-  printf "%s" "$prompt"
-  read -r -n1 REPLY
-  echo
-  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    error "User aborted."
-    exit 1
-  fi
-}
 
 ensure_root() {
   if [ "$(id -u)" -ne 0 ]; then
@@ -68,7 +53,7 @@ while [ $# -gt 0 ]; do
     --help|-h)
       echo "Usage: $SCRIPT_NAME [--dry-run]"
       exit 0 ;;
-    *) warn "Unknown option: $1"; shift ;;
+    *) warn "Unknown option: $1"; exit 1 ;;
   esac
 done
 
@@ -99,7 +84,7 @@ if [ -z "${FEDORA_SETUP_CONFIRMED:-}" ]; then
   fi
 fi
 
-ensure_root "$@"
+ensure_root "${ORIGINAL_ARGS[@]}"
 
 REPOS_TO_REMOVE=(
   "_copr:copr.fedorainfracloud.org:phracek:PyCharm"
@@ -145,11 +130,6 @@ PACKAGES_TO_REMOVE=(
 "decibels"
 "snapshot"
 "gnome-logs"
-# for COSMIC desktop
-"cosmic-store"
-"cosmic-player"
-"thunderbird"
-"nheko"
 # for KDE Plasma
 "akregator"
 "dragon"
@@ -191,6 +171,7 @@ PACKAGES_TO_REMOVE=(
 "kspaceduel"
 "ksquares"
 "ksudoku"
+"kmahjongg"
 "kteatime"
 "ktimer"
 "ktrip"
@@ -198,11 +179,28 @@ PACKAGES_TO_REMOVE=(
 "ktuberling"
 "kubrick"
 "kweather"
-"kwrited"
 "lskat"
 "palapeli"
 "picmi"
-"plasma-welcome-fedora"
+"plasma-welcome"
+"kde-connect"
+"skanpage"
+"neochat"
+"krfb"
+"krdc"
+"kamoso"
+"qrca"
+"kleopatra"
+"kwalletmanager5"
+"filelight"
+"kcalc"
+"okular"
+"ark"
+"akonadi-server"
+"plasma-discover"
+"plasma-discover-notifier"
+"PackageKit"
+"PackageKit-glib"
 )
 
 DNF_CONF_CONTENT=$(cat <<'EOF'
