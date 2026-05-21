@@ -17,6 +17,14 @@ else
   RED=''; GREEN=''; YELLOW=''; BLUE=''; BOLD=''; NORMAL=''
 fi
 
+err_handler() {
+  local exit_code=$?
+  error "Script failed at line ${1} (exit code: ${exit_code})"
+  error "Command: ${2}"
+  exit "$exit_code"
+}
+trap 'err_handler $LINENO "$BASH_COMMAND"' ERR
+
 info() { printf '%b %s\n' "${BLUE}[INFO]${NORMAL} $*"; }
 success() { printf '%b %s\n' "${GREEN}[OK]${NORMAL} $*"; }
 warn() { printf '%b %s\n' "${YELLOW}[WARN]${NORMAL} $*"; }
@@ -50,6 +58,7 @@ safe_eval() {
     info "[dry-run] $*"
     return 0
   fi
+  info "Running: $*"
   eval "$@"
 }
 
@@ -141,6 +150,59 @@ PACKAGES_TO_REMOVE=(
 "cosmic-player"
 "thunderbird"
 "nheko"
+# for KDE Plasma
+"akregator"
+"dragon"
+"elisa-player"
+"juk"
+"kaddressbook"
+"kbrickbuster"
+"kblocks"
+"kbounce"
+"kcharselect"
+"kdiamond"
+"kfind"
+"kfloppy"
+"kfourinline"
+"kget"
+"kgoldrunner"
+"khelpcenter"
+"killbots"
+"kiriki"
+"klickety"
+"klines"
+"kmag"
+"kmail"
+"kmines"
+"kmousetool"
+"kmouth"
+"knetwalk"
+"knotes"
+"kolf"
+"kolourpaint"
+"kontact"
+"konversation"
+"korganizer"
+"kpat"
+"krecorder"
+"krdp"
+"kreversi"
+"kshisen"
+"kspaceduel"
+"ksquares"
+"ksudoku"
+"kteatime"
+"ktimer"
+"ktrip"
+"ktorrent"
+"ktuberling"
+"kubrick"
+"kweather"
+"kwrited"
+"lskat"
+"palapeli"
+"picmi"
+"plasma-welcome-fedora"
 )
 
 DNF_CONF_CONTENT=$(cat <<'EOF'
@@ -236,9 +298,25 @@ action_system_upgrade() {
 }
 
 action_enable_fstrim() {
-  info "Enabling fstrim.timer..."
+  info "Checking fstrim eligibility..."
+
+  local has_ssd=false
+  for dev in /sys/block/[a-z]*; do
+    [ -e "$dev/queue/rotational" ] || continue
+    [ "$(cat "$dev/queue/rotational" 2>/dev/null)" = "0" ] || continue
+    [ "$(cat "$dev/removable" 2>/dev/null)" = "1" ] && continue
+    has_ssd=true
+    break
+  done
+
+  if ! $has_ssd; then
+    warn "No non-removable SSD detected. Skipping fstrim (only useful on SSDs)."
+    return 0
+  fi
+
+  info "SSD detected. Enabling fstrim.timer..."
   if systemctl is-enabled fstrim.timer &>/dev/null; then
-    info "Already enabled."
+    info "fstrim.timer already enabled."
   else
     safe_eval "systemctl enable --now fstrim.timer"
     success "fstrim.timer enabled."
