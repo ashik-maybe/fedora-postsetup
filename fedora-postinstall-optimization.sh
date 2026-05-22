@@ -60,7 +60,7 @@ done
 if [ -z "${FEDORA_SETUP_CONFIRMED:-}" ]; then
   echo "${BOLD}Fedora Lean Setup${NORMAL}"
   echo "This script will perform the following actions automatically:"
-  echo "  - Clean up specific repositories"
+  # echo "  - Clean up specific repositories"
   echo "  - Remove a list of default packages (firefox*, libreoffice-*, gnome-*, etc.)"
   echo "  - Optimize DNF configuration"
   echo "  - Add RPM Fusion repositories"
@@ -332,7 +332,7 @@ action_post_cleanup() {
 
 start=$(date +%s)
 
-action_repo_cleanup
+# action_repo_cleanup
 action_package_removal
 action_optimize_dnf_conf
 action_add_third_party_repos
