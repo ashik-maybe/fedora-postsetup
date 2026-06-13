@@ -201,6 +201,22 @@ PACKAGES_TO_REMOVE=(
 "plasma-discover-notifier"
 "PackageKit"
 "PackageKit-glib"
+# XFCE
+"asunder"
+"catfish"
+"claws-mail"
+"dnfdragora"
+"evince"
+"geany"
+"gigolo"
+"hexchat"
+"parole"
+"pidgin"
+"pragha"
+"simple-scan"
+"transmission-gtk"
+"xfce4-dict"
+"xfburn"
 )
 
 DNF_CONF_CONTENT=$(cat <<'EOF'
