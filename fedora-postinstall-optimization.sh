@@ -102,9 +102,9 @@ PACKAGES_TO_REMOVE=(
 "gnome-backgrounds"
 "gnome-boxes"
 "gnome-calendar"
-"gnome-calculator"
+# "gnome-calculator"
 "gnome-characters"
-"gnome-clocks"
+# "gnome-clocks"
 "gnome-connections"
 "gnome-contacts"
 "gnome-disk-utility"
@@ -278,17 +278,23 @@ action_package_removal() {
 }
 
 action_optimize_dnf_conf() {
-  info "Overwriting /etc/dnf/dnf.conf with optimized config."
+  info "Optimizing DNF configuration..."
   if $DRY_RUN; then
-    info "[dry-run] would overwrite /etc/dnf/dnf.conf"
-    printf '%s\n' "$DNF_CONF_CONTENT" | sed 's/^/    /'
+    info "[dry-run] would optimize performance flags in /etc/dnf/dnf.conf"
     return
   fi
-  echo "$DNF_CONF_CONTENT" > /etc/dnf/dnf.conf
-  chmod 644 /etc/dnf/dnf.conf
-  success "dnf.conf updated."
-  # safe_eval "dnf clean all"
-  # success "DNF cache cleared after config update."
+
+  # Ensure the keys exist or update them without overwriting the whole file
+  for option in "max_parallel_downloads=10" "installonly_limit=3" "clean_requirements_on_remove=True"; do
+    key="${option%=*}"
+    if grep -q "^$key=" /etc/dnf/dnf.conf; then
+      sed -i "s/^$key=.*/$option/" /etc/dnf/dnf.conf
+    else
+      echo "$option" >> /etc/dnf/dnf.conf
+    fi
+  done
+
+  success "dnf.conf performance flags updated."
 }
 
 action_add_third_party_repos() {
