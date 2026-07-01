@@ -104,7 +104,7 @@ PACKAGES_TO_REMOVE=(
 "gnome-calendar"
 # "gnome-calculator"
 "gnome-characters"
-# "gnome-clocks"
+"gnome-clocks"
 "gnome-connections"
 "gnome-contacts"
 "gnome-disk-utility"
