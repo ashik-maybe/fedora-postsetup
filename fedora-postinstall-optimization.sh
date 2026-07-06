@@ -259,21 +259,50 @@ action_package_removal() {
 
 action_optimize_dnf_conf() {
   info "Optimizing DNF configuration..."
+  
+  # Determine target destination (Fallback gracefully if modern DNF5 directory isn't present)
+  local config_file="/etc/dnf/dnf.conf"
+  if [ -d "/etc/dnf/libdnf5.conf.d" ]; then
+    config_file="/etc/dnf/libdnf5.conf.d/99-performance.conf"
+  fi
+
   if $DRY_RUN; then
-    info "[dry-run] would optimize performance flags in /etc/dnf/dnf.conf"
+    info "[dry-run] would optimize performance flags in $config_file"
     return
   fi
 
-  for option in "max_parallel_downloads=10" "installonly_limit=3" "clean_requirements_on_remove=True"; do
-    key="${option%=*}"
-    if grep -q "^$key=" /etc/dnf/dnf.conf; then
-      sed -i "s/^$key=.*/$option/" /etc/dnf/dnf.conf
+  # Ensure target directory structure exists
+  mkdir -p "$(dirname "$config_file")"
+
+  # Initialize drop-in files with standard [main] identifier section if needed
+  if [ ! -f "$config_file" ] || ! grep -q "^\[main\]" "$config_file"; then
+    echo "[main]" > "$config_file"
+  fi
+
+  # Optimized properties configurations
+  local options=(
+    "max_parallel_downloads=10"
+    "fastestmirror=True"
+    "metadata_expire=48h"
+    "deltarpm=True"
+    "installonly_limit=3"
+    "clean_requirements_on_remove=True"
+  )
+
+  for option in "${options[@]}"; do
+    local key="${option%=*}"
+    # Safely swap out lines matching standard property definitions or push new updates
+    if grep -q "^$key=" "$config_file"; then
+      sed -i "s|^$key=.*|$option|" "$config_file"
     else
-      echo "$option" >> /etc/dnf/dnf.conf
+      echo "$option" >> "$config_file"
     fi
   done
 
-  success "dnf.conf performance flags updated."
+  # Clear local cache states so changes get indexed properly
+  dnf clean all &>/dev/null || true
+
+  success "dnf.conf performance flags updated in $config_file and cache refreshed."
 }
 
 action_add_third_party_repos() {
