@@ -8,6 +8,12 @@ Scripts to run after a fresh Fedora Workstation installation.
 > ⚠️ **[IMPORTANT]**
 > On the very first boot after installation, ensure **`Enable Third-Party Repositories`** is checked in the initial setup process.
 
+⚠️ **Codecs for Intel iGPU** *(install after rpm-fusion is enabled)*
+
+```bash
+sudo dnf install intel-media-driver libva-utils
+```
+
 <details>
 
 <summary> 💡 FYI: GPU Firmware Cleanup </summary>
