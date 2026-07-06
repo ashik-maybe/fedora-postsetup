@@ -6,6 +6,7 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+# Track active context targets
 REAL_USER="${SUDO_USER:-$USER}"
 USER_CONFIG_DIR="/home/$REAL_USER/.config"
 
@@ -67,31 +68,56 @@ EOF
 chown "$REAL_USER:$REAL_USER" "$USER_CONFIG_DIR/krunnerrc"
 
 # ----------------------------------------------------
-# 3. Comprehensive KDE Application & Service Purge
+# 3. Streamlined KDE Application & Service Purge
 # ----------------------------------------------------
 echo -e "\e[34m[INFO]\e[0m Running targeted DNF debloat transaction..."
 KDE_DEBLOAT_LIST=(
-    # KDE Personal Information Management (PIM) Suite (Kills hidden background SQL database)
-    "akonadi-server" "akregator" "kaddressbook" "kmail" "knotes"
-    "kontact" "korganizer" "ktnef" "neochat" "pim" "kleopatra"
+    # Core background infrastructure items that run background engines
+    "akonadi-server"
+    "akregator"
+    "kaddressbook"
+    "kmail"
+    "kontact"
+    "korganizer"
+    "ktnef"
+    "neochat"
+    "kleopatra"
+    "plasma-discover"
+    "plasma-discover-notifier"
+    
+    # First-boot onboarding utility (No longer needed)
+    "plasma-welcome"
 
-    # Frontend Storefronts & Background Update Check Loops
-    "plasma-discover" "plasma-discover-notifier"
-
-    # KDE Games & Toy Packages
-    "kbrickbuster" "kblocks" "kbounce" "kdiamond" "kfourinline" "kgoldrunner"
-    "killbots" "kiriki" "klickety" "klines" "kmines" "knetwalk" "kolf" "kpat"
-    "kreversi" "kshisen" "kspaceduel" "ksquares" "ksudoku" "kmahjongg"
-    "ktuberling" "kubrick" "lskat" "palapeli" "picmi"
-
-    # KDE Supplemental Applications & Media Clutter
-    "dragon" "elisa-player" "juk" "kcharselect" "kfind" "kfloppy" "kget"
-    "khelpcenter" "kmag" "kmousetool" "kmouth" "kolourpaint" "konversation"
-    "krecorder" "krdp" "kteatime" "ktimer" "ktrip" "ktorrent" "kweather"
-    "skanpage" "krfb" "krdc" "kamoso" "qrca" "filelight" "kcalc"
+    # Confirmed heavy pre-installed desktop utilities
+    "dragon"
+    "elisa-player"
+    "kcharselect"
+    "kfind"
+    "khelpcenter"
+    "kmouth"
+    "kolourpaint"
+    "krfb"
+    "krdc"
+    "kamoso"
+    "qrca"
+    "filelight"
+    "skanpage"
 )
 
-dnf remove -y "${KDE_DEBLOAT_LIST[@]}"
+# Filter the list down to only packages that are actually installed
+INSTALLED_DEBLOAT=()
+for pkg in "${KDE_DEBLOAT_LIST[@]}"; do
+    if rpm -q "$pkg" &>/dev/null; then
+        INSTALLED_DEBLOAT+=("$pkg")
+    fi
+done
+
+if [ ${#INSTALLED_DEBLOAT[@]} -gt 0 ]; then
+    dnf remove -y "${INSTALLED_DEBLOAT[@]}"
+else
+    echo -e "\e[34m[INFO]\e[0m No target packages found for removal. Skipping step."
+fi
+
 dnf autoremove -y
 dnf clean all
 
