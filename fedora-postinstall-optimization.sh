@@ -266,6 +266,31 @@ action_optimize_dnf_conf() {
     config_file="/etc/dnf/libdnf5.conf.d/99-performance.conf"
   fi
 
+  # Optimized properties configurations
+  local options=(
+    "max_parallel_downloads=10"
+    "fastestmirror=True"
+    "metadata_expire=48h"
+    "deltarpm=True"
+    "installonly_limit=3"
+    "clean_requirements_on_remove=True"
+  )
+
+  # Check if all options are already perfectly set in the file
+  if [ -f "$config_file" ]; then
+    local all_match=true
+    for option in "${options[@]}"; do
+      if ! grep -qxF "$option" "$config_file"; then
+        all_match=false
+        break
+      fi
+    done
+    if $all_match; then
+      success "DNF configuration is already optimized. Skipping."
+      return 0
+    fi
+  fi
+
   if $DRY_RUN; then
     info "[dry-run] would optimize performance flags in $config_file"
     return
@@ -278,16 +303,6 @@ action_optimize_dnf_conf() {
   if [ ! -f "$config_file" ] || ! grep -q "^\[main\]" "$config_file"; then
     echo "[main]" > "$config_file"
   fi
-
-  # Optimized properties configurations
-  local options=(
-    "max_parallel_downloads=10"
-    "fastestmirror=True"
-    "metadata_expire=48h"
-    "deltarpm=True"
-    "installonly_limit=3"
-    "clean_requirements_on_remove=True"
-  )
 
   for option in "${options[@]}"; do
     local key="${option%=*}"
