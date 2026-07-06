@@ -119,7 +119,6 @@ else
 fi
 
 dnf autoremove -y
-dnf clean all
 
 # ----------------------------------------------------
 # 4. Telemetry Lockout
