@@ -88,6 +88,9 @@ KDE_DEBLOAT_LIST=(
     # First-boot onboarding utility (No longer needed)
     "plasma-welcome"
 
+    # Games
+    "kmahjongg" "kmines" "kpat"
+
     # Confirmed heavy pre-installed desktop utilities
     "dragon"
     "elisa-player"
