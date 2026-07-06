@@ -102,7 +102,7 @@ PACKAGES_TO_REMOVE=(
 "gnome-backgrounds"
 "gnome-boxes"
 "gnome-calendar"
-# "gnome-calculator"
+"gnome-calculator"
 "gnome-characters"
 "gnome-clocks"
 "gnome-connections"
@@ -360,7 +360,7 @@ action_optimize_dnf_conf
 action_add_third_party_repos
 action_swap_ffmpeg
 action_system_upgrade
-action_enable_fstrim
+#action_enable_fstrim
 action_post_cleanup
 
 end=$(date +%s)
