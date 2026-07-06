@@ -94,17 +94,19 @@ REPOS_TO_REMOVE=(
 
 PACKAGES_TO_REMOVE=(
   # GNOME Stack
-  "baobab" "evolution" "firefox*" "gnome-abrt" "gnome-backgrounds" 
-  "gnome-boxes" "gnome-calendar" "gnome-calculator" "gnome-characters" 
-  "gnome-clocks" "gnome-connections" "gnome-contacts" "gnome-disk-utility" 
-  "gnome-font-viewer" "gnome-maps" "gnome-shell-extension-apps-menu" 
-  "gnome-shell-extension-background-logo" "gnome-shell-extension-launch-new-instance" 
-  "gnome-shell-extension-places-menu" "gnome-shell-extension-window-list" 
-  "gnome-software" "gnome-tour" "gnome-user-docs" "gnome-weather" "rhythmbox" 
-  "seahorse" "showtime" "simple-scan" "totem" "yelp" "decibels" "snapshot" "gnome-logs"
-  
-  # Office Suite & Basic Clutter
-  "libreoffice-*" "mediawriter"
+    # GNOME User Applications & Productivity Tools
+  "evolution" "gnome-calendar" "gnome-clocks" "gnome-contacts" "gnome-maps"
+  "decibels" "rhythmbox" "showtime" "snapshot" "totem" "firefox*" "libreoffice-*"
+
+    # System Utilities, Hardware Tools & Virtualization
+  "baobab" "gnome-calculator" "gnome-logs" "simple-scan"
+  "gnome-boxes" "gnome-connections" "mediawriter" "gnome-software"
+
+    # Desktop Environment Assets, Extensions & Documentation
+  "gnome-shell-extension-apps-menu" "gnome-shell-extension-background-logo" 
+  "gnome-shell-extension-launch-new-instance" "gnome-shell-extension-places-menu" 
+  "gnome-shell-extension-window-list" "gnome-backgrounds" "gnome-tour"
+  "gnome-characters" "gnome-font-viewer" "gnome-user-docs" "yelp" "gnome-abrt"
 
   # XFCE Stack
   "asunder" "catfish" "claws-mail" "dnfdragora" "evince" "geany" "gigolo" 
