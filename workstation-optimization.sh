@@ -93,7 +93,6 @@ REPOS_TO_REMOVE=(
 )
 
 PACKAGES_TO_REMOVE=(
-  # GNOME Stack
     # GNOME User Applications & Productivity Tools
   "evolution" "gnome-calendar" "gnome-clocks" "gnome-contacts" "gnome-maps"
   "decibels" "rhythmbox" "showtime" "snapshot" "totem" "firefox*" "libreoffice-*"
@@ -107,11 +106,6 @@ PACKAGES_TO_REMOVE=(
   "gnome-shell-extension-launch-new-instance" "gnome-shell-extension-places-menu" 
   "gnome-shell-extension-window-list" "gnome-backgrounds" "gnome-tour"
   "gnome-characters" "gnome-font-viewer" "gnome-user-docs" "yelp" "gnome-abrt"
-
-  # XFCE Stack
-  "asunder" "catfish" "claws-mail" "dnfdragora" "evince" "geany" "gigolo" 
-  "hexchat" "parole" "pidgin" "pragha" "simple-scan" "transmission-gtk" 
-  "xfce4-dict" "xfburn"
 )
 
 repo_file_matches() {
