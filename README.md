@@ -14,7 +14,7 @@ The main script automatically optimizes your DNF configuration, enables RPM Fusi
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/ashik-maybe/fedora-postsetup.git
+git clone https://github.com/ashik-maybe/fedora-postsetup.git --depth=1
 
 ```
 
