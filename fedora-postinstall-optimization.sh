@@ -346,12 +346,11 @@ action_post_cleanup() {
 
 start=$(date +%s)
 
-# Logical sequence: Tweaks -> Repos -> Codecs -> Global Upgrade -> Bloat Removal
 action_optimize_dnf_conf
 action_add_third_party_repos
 action_install_base_codecs
-action_system_upgrade
 action_package_removal
+action_system_upgrade
 action_post_cleanup
 
 end=$(date +%s)
