@@ -61,12 +61,11 @@ if [ -z "${FEDORA_SETUP_CONFIRMED:-}" ]; then
   echo "${BOLD}Fedora Lean Setup${NORMAL}"
   echo "This script will perform the following actions automatically:"
   # echo "  - Clean up specific repositories"
-  echo "  - Remove a list of default packages (firefox*, libreoffice-*, gnome-*, etc.)"
   echo "  - Optimize DNF configuration"
   echo "  - Add RPM Fusion repositories"
-  echo "  - Swap ffmpeg-free for ffmpeg"
+  echo "  - Install baseline multimedia codecs (ffmpeg swap, gstreamer plugins, openh264)"
   echo "  - Upgrade the system"
-  echo "  - Enable fstrim.timer"
+  echo "  - Remove a list of default packages (firefox*, libreoffice-*, gnome-*, etc.)"
   echo "  - Perform post-install cleanup"
   echo ""
 
@@ -88,7 +87,6 @@ ensure_root "${ORIGINAL_ARGS[@]}"
 
 REPOS_TO_REMOVE=(
   "_copr:copr.fedorainfracloud.org:phracek:PyCharm"
-  "fedora-cisco-openh264"
   "google-chrome"
   "rpmfusion-nonfree-nvidia-driver"
   "rpmfusion-nonfree-steam"
@@ -219,23 +217,6 @@ PACKAGES_TO_REMOVE=(
 "xfburn"
 )
 
-DNF_CONF_CONTENT=$(cat <<'EOF'
-[main]
-gpgcheck=True
-installonly_limit=3
-clean_requirements_on_remove=True
-fastestmirror=True
-max_parallel_downloads=10
-timeout=15
-retries=2
-skip_if_unavailable=True
-best=True
-keepcache=False
-color=auto
-errorlevel=1
-EOF
-)
-
 repo_file_matches() {
   local pattern="$1"
   for repofile in /etc/yum.repos.d/*.repo; do
@@ -267,13 +248,12 @@ action_repo_cleanup() {
 
 action_package_removal() {
   info "Attempting to remove packages..."
-  echo "Packages to remove (or already removed):"
-  for p in "${PACKAGES_TO_REMOVE[@]}"; do echo "  - $p"; done
   local cmd="dnf remove -y"
   for pkg in "${PACKAGES_TO_REMOVE[@]}"; do
     cmd+=" $pkg"
   done
-  safe_eval "$cmd"
+  # Appended || true so missing DE desktop environment packages won't crash execution
+  safe_eval "$cmd" || warn "Some packages weren't present or skipped."
   success "Package removal attempt completed."
 }
 
@@ -284,7 +264,6 @@ action_optimize_dnf_conf() {
     return
   fi
 
-  # Ensure the keys exist or update them without overwriting the whole file
   for option in "max_parallel_downloads=10" "installonly_limit=3" "clean_requirements_on_remove=True"; do
     key="${option%=*}"
     if grep -q "^$key=" /etc/dnf/dnf.conf; then
@@ -306,41 +285,25 @@ action_add_third_party_repos() {
   success "RPM Fusion repos added."
 }
 
-action_swap_ffmpeg() {
-  info "Swapping ffmpeg-free -> ffmpeg..."
-  safe_eval "dnf swap -y ffmpeg-free ffmpeg --allowerasing" || warn "Swap failed or unnecessary."
+action_install_base_codecs() {
+  info "Installing baseline multimedia codecs..."
+  
+  # Enable OpenH264 & install WebRTC compatibility components
+  safe_eval "dnf config-manager setopt fedora-cisco-openh264.enabled=1"
+  safe_eval "dnf install -y gstreamer1-plugin-openh264 mozilla-openh264"
+  
+  # Complete ffmpeg-free to full ffmpeg migration
+  safe_eval "dnf swap -y ffmpeg-free ffmpeg --allowerasing" || warn "FFmpeg swap unnecessary or already handled."
+  
+  # Comprehensive multimedia complements group installation
+  safe_eval "dnf update -y @multimedia --setopt=\"install_weak_deps=False\" --exclude=PackageKit-gstreamer-plugin"
+  success "Baseline codecs configuration finished."
 }
 
 action_system_upgrade() {
   info "Upgrading system..."
   safe_eval "dnf upgrade -y"
   success "System upgraded."
-}
-
-action_enable_fstrim() {
-  info "Checking fstrim eligibility..."
-
-  local has_ssd=false
-  for dev in /sys/block/[a-z]*; do
-    [ -e "$dev/queue/rotational" ] || continue
-    [ "$(cat "$dev/queue/rotational" 2>/dev/null)" = "0" ] || continue
-    [ "$(cat "$dev/removable" 2>/dev/null)" = "1" ] && continue
-    has_ssd=true
-    break
-  done
-
-  if ! $has_ssd; then
-    warn "No non-removable SSD detected. Skipping fstrim (only useful on SSDs)."
-    return 0
-  fi
-
-  info "SSD detected. Enabling fstrim.timer..."
-  if systemctl is-enabled fstrim.timer &>/dev/null; then
-    info "fstrim.timer already enabled."
-  else
-    safe_eval "systemctl enable --now fstrim.timer"
-    success "fstrim.timer enabled."
-  fi
 }
 
 action_post_cleanup() {
@@ -354,13 +317,12 @@ action_post_cleanup() {
 
 start=$(date +%s)
 
-# action_repo_cleanup
-action_package_removal
+# Logical sequence: Tweaks -> Repos -> Codecs -> Global Upgrade -> Bloat Removal
 action_optimize_dnf_conf
 action_add_third_party_repos
-action_swap_ffmpeg
+action_install_base_codecs
 action_system_upgrade
-#action_enable_fstrim
+action_package_removal
 action_post_cleanup
 
 end=$(date +%s)
