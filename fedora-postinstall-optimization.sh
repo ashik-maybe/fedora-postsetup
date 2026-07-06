@@ -106,26 +106,6 @@ PACKAGES_TO_REMOVE=(
   # Office Suite & Basic Clutter
   "libreoffice-*" "mediawriter"
 
-  # KDE Personal Information Management (PIM) Suite (Kills heavy backend database)
-  "akregator" "kaddressbook" "kmail" "knotes" "kontact" "korganizer" "ktnef" "neochat" "pim"
-
-  # KDE Games & Toy Packages
-  "kbrickbuster" "kblocks" "kbounce" "kdiamond" "kfourinline" "kgoldrunner" 
-  "killbots" "kiriki" "klickety" "klines" "kmines" "knetwalk" "kolf" "kpat" 
-  "kreversi" "kshisen" "kspaceduel" "ksquares" "ksudoku" "kmahjongg" 
-  "ktuberling" "kubrick" "lskat" "palapeli" "picmi"
-
-  # KDE Applications & Media Clutter (Safely stripped away)
-  "dragon" "elisa-player" "juk" "kcharselect" "kfind" "kfloppy" "kget" 
-  "khelpcenter" "kmag" "kmousetool" "kmouth" "kolourpaint" "konversation" 
-  "krecorder" "krdp" "kteatime" "ktimer" "ktrip" "ktorrent" "kweather" 
-  "skanpage" "krfb" "krdc" "kamoso" "qrca" "filelight" "kcalc"
-
-  # Frontend Storefronts & Background DB Infrastructure
-  "akonadi-server"
-  "plasma-discover"
-  "plasma-discover-notifier"
-
   # XFCE Stack
   "asunder" "catfish" "claws-mail" "dnfdragora" "evince" "geany" "gigolo" 
   "hexchat" "parole" "pidgin" "pragha" "simple-scan" "transmission-gtk" 
