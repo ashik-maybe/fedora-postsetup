@@ -34,6 +34,7 @@ PACKAGES_TO_REMOVE=(
     simple-scan                # Document Scanner
     snapshot                   # Camera App
     yelp                       # Help Viewer
+    mediawriter                # Fedora Media Writer
 )
 
 echo "The following packages will be uninstalled:"
