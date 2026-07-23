@@ -3,6 +3,8 @@
 set -euo pipefail
 
 REPO_PATH="/etc/yum.repos.d/google-chrome.repo"
+RPM_TMP="/tmp/google-chrome-stable_current_x86_64.rpm"
+RPM_URL="https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm"
 
 # 1. Check if Chrome is already installed
 if command -v google-chrome &>/dev/null; then
@@ -11,35 +13,28 @@ if command -v google-chrome &>/dev/null; then
 fi
 
 # 2. Prompt for confirmation
-read -r -p "Google Chrome is not installed. Proceed with fresh repo setup and installation? (y/n): " CONFIRM
+read -r -p "Google Chrome is not installed. Proceed with downloading and installing the RPM? (y/n): " CONFIRM
 
 if [[ "${CONFIRM,,}" != "y" ]]; then
   echo "Installation aborted."
   exit 1
 fi
 
-# 3. Delete existing chrome repo file if present
+# 3. Clean up any existing repo file
 if [[ -f "$REPO_PATH" ]]; then
   echo "Removing existing repository file at $REPO_PATH..."
   sudo rm -f "$REPO_PATH"
 fi
 
-# 4. Add Google's official repo configuration directly
-echo "Adding Google's official Chrome repository..."
-cat <<EOF | sudo tee "$REPO_PATH" >/dev/null
-[google-chrome]
-name=google-chrome
-baseurl=https://dl.google.com/linux/chrome/rpm/stable/x86_64
-enabled=1
-gpgcheck=1
-gpgkey=https://dl.google.com/linux/linux_signing_key.pub
-EOF
+# 4. Download RPM to /tmp
+echo "Downloading Chrome RPM to /tmp..."
+curl -fsSL "$RPM_URL" -o "$RPM_TMP"
 
-# 5. Import GPG signing key & install Chrome
-echo "Importing Google GPG signing key..."
-sudo rpm --import https://dl.google.com/linux/linux_signing_key.pub
-
+# 5. Install the RPM package (dnf handles dependencies and GPG setup)
 echo "Installing google-chrome-stable..."
-sudo dnf install google-chrome-stable -y
+sudo dnf install -y "$RPM_TMP"
+
+# 6. Clean up temporary RPM file
+rm -f "$RPM_TMP"
 
 echo "Installation complete!"
