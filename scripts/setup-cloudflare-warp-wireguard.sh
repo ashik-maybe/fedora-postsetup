@@ -1,5 +1,8 @@
 #!/bin/bash
-# setup-warp-wireguard.sh (v4.0) — Cloudflare WARP via WireGuard with Reversal Flag
+# setup-warp-wireguard.sh — Cloudflare WARP via WireGuard for Fedora 44+
+# Usage:
+#   ./setup-warp-wireguard.sh           # Install/configure WARP
+#   ./setup-warp-wireguard.sh -r        # Remove WARP completely
 
 set -euo pipefail
 
@@ -9,22 +12,19 @@ GREEN="\033[0;32m"
 RED="\033[0;31m"
 RESET="\033[0m"
 
-# Helper to execute commands with unified feedback formatting
 run_cmd() {
     echo -e "${CYAN}🔧 Running: $1${RESET}"
     eval "$1"
 }
 
-# 1. Handle uninstallation / reversal parameter
+# ── Reversal / Uninstall
 if [[ "${1:-}" == "-r" || "${1:-}" == "--reverse" ]]; then
-    echo -e "${YELLOW}🛑 Initiating complete reversal/removal of WARP configurations...${RESET}"
+    echo -e "${YELLOW}🛑 Removing Cloudflare WARP configuration...${RESET}"
 
-    # Safely take down active wireguard interfaces
     if ip link show warp &>/dev/null; then
         run_cmd "sudo wg-quick down warp"
     fi
 
-    # Remove NetworkManager GUI profiles
     if nmcli connection show "Cloudflare WARP" &>/dev/null; then
         run_cmd "sudo nmcli connection delete 'Cloudflare WARP'"
     fi
@@ -32,33 +32,38 @@ if [[ "${1:-}" == "-r" || "${1:-}" == "--reverse" ]]; then
         run_cmd "sudo nmcli connection delete warp"
     fi
 
-    # Strip filesystem configurations
     if [ -f "/etc/wireguard/warp.conf" ]; then
         run_cmd "sudo rm -f /etc/wireguard/warp.conf"
     fi
 
-    echo -e "${GREEN}✨ Reversal complete. System clean!${RESET}"
+    echo -e "${GREEN}✨ Removal complete.${RESET}"
     exit 0
 fi
 
-echo -e "${YELLOW}🚀 Starting Cloudflare WARP via WireGuard setup (v4.0)...${RESET}"
+echo -e "${YELLOW}🚀 Cloudflare WARP via WireGuard — Setup${RESET}"
 
-# 2. Check for existing profile and handle optional re-registration
+# ── Ensure curl is available (Fedora minimal might not have it)
+if ! command -v curl &>/dev/null; then
+    run_cmd "sudo dnf install -y curl"
+fi
+
+# ── Handle existing profile
 if [ -f "/etc/wireguard/warp.conf" ]; then
     echo -e "${YELLOW}⚠️ Existing WARP configuration found.${RESET}"
-    read -p "🔄 Do you want to re-register and generate a completely fresh identity? (y/N): " FORCE_REG
+    read -p "Re-register for a fresh identity? (y/N): " -n 1 -r
+    echo
 
-    if [[ "$FORCE_REG" =~ ^[Yy]$ ]]; then
-        echo -e "${YELLOW}🧹 Purging old profile and NetworkManager configurations...${RESET}"
+    if [[ "$REPLY" =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}🧹 Removing old profile...${RESET}"
         sudo wg-quick down warp &>/dev/null || true
         sudo nmcli connection delete "Cloudflare WARP" &>/dev/null || true
         sudo nmcli connection delete warp &>/dev/null || true
         sudo rm -f /etc/wireguard/warp.conf
-        echo -e "${GREEN}✅ Old identity cleared.${RESET}"
+        echo -e "${GREEN}✅ Old profile cleared.${RESET}"
     fi
 fi
 
-# 3. Install system dependencies if missing
+# ── Install wireguard-tools
 if ! command -v wg-quick &>/dev/null; then
     echo -e "${YELLOW}📦 Installing wireguard-tools...${RESET}"
     run_cmd "sudo dnf install -y wireguard-tools"
@@ -66,11 +71,14 @@ else
     echo -e "${GREEN}✅ wireguard-tools already installed.${RESET}"
 fi
 
-# 4. Build profile via wgcf if not present
+# ── Generate profile via wgcf
 if [ ! -f "/etc/wireguard/warp.conf" ]; then
-    echo -e "${YELLOW}🌐 Generating fresh Cloudflare WARP WireGuard profile...${RESET}"
+    echo -e "${YELLOW}🌐 Generating WARP WireGuard profile...${RESET}"
 
-    WGCF_URL=$(curl -s https://api.github.com/repos/ViRb3/wgcf/releases/latest | grep -oP '"browser_download_url": "\K[^"]*linux_amd64')
+    WGCF_URL=$(curl -s https://api.github.com/repos/ViRb3/wgcf/releases/latest | grep -oE '"browser_download_url": "[^"]*linux_amd64"' | cut -d'"' -f4)
+
+    WORKDIR=$(mktemp -d)
+    cd "$WORKDIR"
 
     run_cmd "curl -fsSL $WGCF_URL -o wgcf"
     run_cmd "chmod +x wgcf"
@@ -81,15 +89,16 @@ if [ ! -f "/etc/wireguard/warp.conf" ]; then
     run_cmd "sudo mkdir -p /etc/wireguard"
     run_cmd "sudo mv wgcf-profile.conf /etc/wireguard/warp.conf"
 
-    rm -f wgcf wgcf-account.toml
-    echo -e "${GREEN}✅ Profile generated dynamically.${RESET}"
+    cd - > /dev/null
+    rm -rf "$WORKDIR"
+    echo -e "${GREEN}✅ Profile generated.${RESET}"
 else
-    echo -e "${GREEN}✅ Keeping active WARP WireGuard configuration profile.${RESET}"
+    echo -e "${GREEN}✅ Using existing WARP profile.${RESET}"
 fi
 
-# 5. Integrate into NetworkManager for Beautiful GUI Controls
+# ── NetworkManager integration
 if ! nmcli connection show "Cloudflare WARP" &>/dev/null; then
-    echo -e "${YELLOW}⚙️ Integrating into NetworkManager with production naming profile...${RESET}"
+    echo -e "${YELLOW}⚙️ Adding to NetworkManager...${RESET}"
 
     run_cmd "sudo nmcli connection import type wireguard file /etc/wireguard/warp.conf"
     run_cmd "sudo nmcli connection modify warp connection.id 'Cloudflare WARP'"
@@ -97,21 +106,20 @@ if ! nmcli connection show "Cloudflare WARP" &>/dev/null; then
 
     echo -e "${GREEN}✅ NetworkManager integration complete.${RESET}"
 else
-    echo -e "${GREEN}✅ NetworkManager connection 'Cloudflare WARP' already configured.${RESET}"
+    echo -e "${GREEN}✅ NetworkManager already configured.${RESET}"
 fi
 
-# 6. Final instructions
+# ── Done
 echo -e "${CYAN}
-🎉 Process finished!
+🎉 Setup complete!
 
-🖥️ Beautiful GUI Toggle:
-  Look for 'Cloudflare WARP' in your Desktop Environment panel (GNOME, KDE, XFCE).
+🖥️  GUI: Toggle 'Cloudflare WARP' in your network panel
 
-📟 Terminal Commands:
-  ➤ Connect:    sudo wg-quick up warp
-  ➤ Status:     sudo wg show warp
-  ➤ Disconnect: sudo wg-quick down warp
+📟 Terminal:
+  Connect:    sudo wg-quick up warp
+  Status:     sudo wg show warp
+  Disconnect: sudo wg-quick down warp
 
-❌ To completely uninstall/undo everything later:
+❌ Remove everything:
   ./$(basename "$0") -r
 ${RESET}"
