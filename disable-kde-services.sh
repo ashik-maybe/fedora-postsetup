@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# remove_kde_bloat.sh — Lean KDE Plasma for Fedora 44+
+# disable-kde-services.sh — Lean KDE Plasma for Fedora 44+
 # Disables RAM-heavy services without removing packages
-# Usage: ./remove_kde_bloat.sh
+# Usage: ./disable-kde-services.sh
 
 set -euo pipefail
 

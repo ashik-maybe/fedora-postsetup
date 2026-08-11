@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# disable_gnome_bloat.sh — Disable GNOME Background Services for Fedora 44+
+# disable-gnome-services.sh — Disable GNOME Background Services for Fedora 44+
 # Stops RAM-heavy services without removing packages
-# Usage: ./disable_gnome_bloat.sh
+# Usage: ./disable-gnome-services.sh
 
 set -euo pipefail
 
