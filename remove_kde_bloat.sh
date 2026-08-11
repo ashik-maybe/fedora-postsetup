@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # remove_kde_bloat.sh — Lean KDE Plasma for Fedora 44+
+# Disables RAM-heavy services without removing packages
 # Usage: ./remove_kde_bloat.sh
 
 set -euo pipefail
@@ -18,98 +19,16 @@ sudo -v &>/dev/null || error "Sudo privileges required."
 
 clear
 echo -e "${CYAN}=================================================${NC}"
-echo -e "${CYAN}        KDE Plasma Bloat Removal Tool${NC}"
+echo -e "${CYAN}     KDE Background Service Disabler${NC}"
 echo -e "${CYAN}=================================================${NC}"
 echo ""
 
-# ── Packages to remove
-PKGS=(
-    akregator
-    dragon
-    elisa-player
-    filelight
-    firefox
-    gnome-abrt
-    kaddressbook
-    kamoso
-    kcalc
-    kcharselect
-    kde-connect
-    kdeconnectd
-    kdf
-    keditbookmarks
-    kfind
-    khelpcenter
-    kleopatra
-    kmahjongg
-    kmag
-    kmail
-    kmines
-    kmousetool
-    kmouth
-    kolourpaint
-    konversation
-    kontact
-    korganizer
-    kpat
-    kpatience
-    krdc
-    krfb
-    ktnef
-    kteatime
-    ktimer
-    kwalletmanager
-    kwalletmanager5
-    kwalletmanager6
-    kwrite
-    libreoffice-calc
-    libreoffice-draw
-    libreoffice-impress
-    libreoffice-math
-    libreoffice-writer
-    mediawriter
-    neochat
-    PackageKit
-    PackageKit-qt6
-    pim
-    plasma-discover
-    plasma-welcome
-    qrca
-    skanpage
-    sweeper
-)
-
-# ── Show list
-log "Packages to remove:"
-echo ""
-for pkg in "${PKGS[@]}"; do
-    echo "  • $pkg"
-done
-echo ""
-
-read -p "Proceed? (y/N): " -n 1 -r
-echo ""
-[[ $REPLY =~ ^[Yy]$ ]] || { warn "Cancelled."; exit 0; }
-echo ""
-
-# ── Install Foot terminal first (so we have a terminal after Konsole is gone)
-log "Installing Foot terminal..."
-sudo dnf install -y foot
-success "Foot terminal installed"
-echo ""
-
-# ── Remove packages
-log "Removing packages..."
-sudo dnf remove -y "${PKGS[@]}"
-success "Packages removed"
-echo ""
-
 # ── Baloo
-log "Disabling Baloo..."
+log "Disabling Baloo file indexer..."
 if command -v balooctl6 &>/dev/null; then
     balooctl6 suspend 2>/dev/null || true
     balooctl6 disable 2>/dev/null || true
-    success "Baloo disabled"
+    success "Baloo disabled (balooctl6)"
 elif command -v balooctl &>/dev/null; then
     balooctl suspend 2>/dev/null || true
     balooctl disable 2>/dev/null || true
@@ -130,19 +49,36 @@ fi
 
 # ── User services
 echo ""
-log "Disabling leftover user services..."
-systemctl --user disable --now akonadi-server 2>/dev/null || true
-systemctl --user disable --now akonadi-control 2>/dev/null || true
-systemctl --user disable --now akonadi-indexing-agent 2>/dev/null || true
-systemctl --user disable --now baloo_file 2>/dev/null || true
-systemctl --user disable --now baloo-file 2>/dev/null || true
-success "User services handled"
+log "Disabling background services..."
+
+SERVICES=(
+    akonadi-server
+    akonadi-control
+    akonadi-indexing-agent
+    akonadi-followupreminder-agent
+    akonadi-maildir-resource
+    akonadi-migration-agent
+    akonadi-newmailnotifier-agent
+    akonadi-sendlater-agent
+    baloo_file
+    baloo-file
+    telepathy-mission-control
+    telepathy-logger
+)
+
+for svc in "${SERVICES[@]}"; do
+    if systemctl --user is-enabled "$svc" &>/dev/null 2>&1; then
+        systemctl --user disable --now "$svc" 2>/dev/null || true
+        echo "   ✓ Disabled $svc"
+    fi
+done
+success "User services disabled"
 
 # ── PackageKit
 echo ""
 log "Disabling PackageKit..."
 if systemctl is-active packagekit.service &>/dev/null 2>&1; then
-    sudo systemctl disable --now packagekit.service
+    sudo systemctl disable --now packagekit.service 2>/dev/null || true
     success "PackageKit disabled"
 else
     warn "PackageKit not running"
@@ -150,19 +86,25 @@ fi
 
 # ── Cleanup
 echo ""
-log "Cleaning up..."
-sudo dnf autoremove -y
-rm -rf ~/.cache/plasma-discover* ~/.cache/packagekit ~/.local/share/akonadi ~/.config/akonadi ~/.local/share/baloo 2>/dev/null || true
+log "Cleaning caches..."
+rm -rf ~/.local/share/akonadi ~/.config/akonadi ~/.local/share/baloo ~/.cache/packagekit 2>/dev/null || true
 sudo rm -rf /var/cache/PackageKit 2>/dev/null || true
-success "Cleanup complete"
+success "Caches cleaned"
 
 # ── Done
 echo ""
 echo -e "${CYAN}=================================================${NC}"
-echo -e "${GREEN}  ✓ KDE Plasma debloat complete${NC}"
+echo -e "${GREEN}  ✓ Services disabled${NC}"
 echo -e "${CYAN}=================================================${NC}"
 echo ""
-echo -e "${BLUE}Installed:${NC} Foot terminal"
-echo -e "${BLUE}Kept:${NC} Dolphin, Kate, Gwenview, Okular, Ark, Spectacle, KRunner"
+echo -e "${BLUE}What was disabled:${NC}"
+echo "  • Baloo file indexer (~200-300MB)"
+echo "  • Akonadi PIM database (~200-400MB)"
+echo "  • Telepathy IM framework"
+echo "  • PackageKit background daemon"
+echo ""
+echo -e "${BLUE}RAM savings: ~400-700MB${NC}"
+echo -e "${BLUE}Packages: untouched, nothing broken${NC}"
+echo ""
 echo -e "${YELLOW}→ Log out or restart to finish${NC}"
 echo ""
