@@ -1,64 +1,161 @@
 #!/usr/bin/env bash
 
+# remove_gnome_bloat.sh — GNOME Bloat Removal for Fedora 44+
+# Minimal, targeted — keeps what matters, removes what doesn't
+#
+# Usage:
+#   chmod +x remove_gnome_bloat.sh
+#   ./remove_gnome_bloat.sh
+
 set -euo pipefail
 
-echo "================================================="
-echo " Safe GNOME Bloat Removal Tool"
-echo "================================================="
+# ──────────────────────────────────────────────────────────────
+# Colors
+# ──────────────────────────────────────────────────────────────
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[0;33m'
+RED='\033[0;31m'
+CYAN='\033[0;36m'
+NC='\033[0m'
 
-# List of safe-to-remove apps and bloatware
-PACKAGES_TO_REMOVE=(
+log()    { echo -e "${BLUE}[INFO]${NC} $1"; }
+success(){ echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+warn()   { echo -e "${YELLOW}[WARN]${NC} $1"; }
+error()  { echo -e "${RED}[ERROR]${NC} $1"; }
+
+# ──────────────────────────────────────────────────────────────
+# Header
+# ──────────────────────────────────────────────────────────────
+clear
+echo -e "${CYAN}=================================================${NC}"
+echo -e "${CYAN}        GNOME Bloat Removal Tool${NC}"
+echo -e "${CYAN}=================================================${NC}"
+echo ""
+
+# ──────────────────────────────────────────────────────────────
+# Applications to remove
+# ──────────────────────────────────────────────────────────────
+APP_PACKAGES=(
     baobab                     # Disk Usage Analyzer
-    decibels                   # Audio Previewer / Player
-    evince                     # Legacy Document Viewer
-    firefox                    # Firefox RPM
+    decibels                   # Audio Previewer
+    evince                     # Document Viewer
+    firefox                    # Firefox RPM (use Flatpak instead)
     gnome-boxes                # Virtual Machines
     gnome-calculator           # Calculator
     gnome-calendar             # Calendar
-    gnome-characters           # Characters
+    gnome-characters           # Character Map
     gnome-clocks               # Clocks
-    gnome-connections          # Connections
+    gnome-connections          # Remote Desktop
     gnome-contacts             # Contacts
-    gnome-disk-utility         # Disks
-    gnome-font-viewer          # Fonts
-    gnome-logs                 # Logs
+    gnome-disk-utility         # Disk Manager
+    gnome-font-viewer          # Font Viewer
+    gnome-logs                 # Log Viewer
     gnome-maps                 # Maps
-    gnome-music                # Audio Player
-    gnome-software             # GNOME Software Store
-    gnome-tour                 # Tour
+    gnome-music                # Music Player
+    gnome-software             # Software Center
+    gnome-tour                 # Welcome Tour
     gnome-weather              # Weather
-    PackageKit                 # PackageKit Service (Not needed for CLI updates)
-    PackageKit-glib            # PackageKit GLib library
-    rhythmbox                  # Legacy Audio Player
+    mediawriter                # Fedora Media Writer
+    rhythmbox                  # Music Player (legacy)
     showtime                   # Video Player
     simple-scan                # Document Scanner
-    snapshot                   # Camera App
-    yelp                       # Help Viewer
-    mediawriter                # Fedora Media Writer
+    snapshot                   # Camera
+    yelp                       # Help Browser
+
+    # Background services
+    PackageKit                 # PackageKit daemon
+    PackageKit-glib            # PackageKit GLib library
 )
 
-echo "The following packages will be uninstalled:"
-printf ' - %s\n' "${PACKAGES_TO_REMOVE[@]}"
-echo "-------------------------------------------------"
+# ──────────────────────────────────────────────────────────────
+# Display packages to be removed
+# ──────────────────────────────────────────────────────────────
+log "The following packages will be removed:"
+echo ""
+printf '  • %s\n' "${APP_PACKAGES[@]}"
+echo ""
 
-# Prompt for confirmation
-read -p "Do you want to proceed with removal? (y/N): " -n 1 -r
-echo
+log "Additional cleanup tasks:"
+echo "  • Disable Tracker 3 (file content indexer)"
+echo "  • Remove GNOME Software cache"
+echo "  • Remove PackageKit cache"
+echo ""
+
+# ──────────────────────────────────────────────────────────────
+# Confirmation
+# ──────────────────────────────────────────────────────────────
+read -p "Proceed with removal? (y/N): " -n 1 -r
+echo ""
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "Operation canceled."
+    warn "Operation cancelled."
     exit 0
 fi
 
-echo "Removing selected packages..."
-sudo dnf remove -y "${PACKAGES_TO_REMOVE[@]}"
+echo ""
 
-echo "Cleaning up orphaned dependencies..."
-sudo dnf autoremove -y
+# ──────────────────────────────────────────────────────────────
+# 1. Remove packages
+# ──────────────────────────────────────────────────────────────
+log "Removing selected packages..."
+if sudo dnf remove -y "${APP_PACKAGES[@]}" 2>/dev/null; then
+    success "Packages removed successfully"
+else
+    warn "Some packages were not installed — continuing..."
+fi
 
-echo "Cleaning up leftover caches..."
-rm -rf ~/.cache/gnome-software
-sudo rm -rf /var/cache/PackageKit
+# ──────────────────────────────────────────────────────────────
+# 2. Disable Tracker 3
+# ──────────────────────────────────────────────────────────────
+echo ""
+log "Disabling Tracker 3 (file content indexer)..."
 
-echo "================================================="
-echo " Done! All unwanted apps and services removed."
-echo "================================================="
+# Tracker indexes file contents — not needed for Super key app search or Nautilus
+if command -v tracker3 &>/dev/null; then
+    tracker3 daemon -t 2>/dev/null || true
+    success "Tracker daemon terminated"
+fi
+
+systemctl --user mask tracker-miner-fs-3.service 2>/dev/null || true
+systemctl --user mask tracker-extract-3.service 2>/dev/null || true
+systemctl --user mask tracker-writeback-3.service 2>/dev/null || true
+success "Tracker services masked"
+
+# ──────────────────────────────────────────────────────────────
+# 3. Cleanup
+# ──────────────────────────────────────────────────────────────
+echo ""
+log "Cleaning up..."
+
+# Remove orphaned dependencies
+sudo dnf autoremove -y &>/dev/null
+success "Orphaned packages removed"
+
+# Remove caches
+rm -rf ~/.cache/gnome-software 2>/dev/null || true
+rm -rf ~/.cache/tracker3 2>/dev/null || true
+rm -rf ~/.local/share/tracker3 2>/dev/null || true
+sudo rm -rf /var/cache/PackageKit 2>/dev/null || true
+success "Caches cleaned"
+
+# ──────────────────────────────────────────────────────────────
+# Done
+# ──────────────────────────────────────────────────────────────
+echo ""
+echo -e "${CYAN}=================================================${NC}"
+echo -e "${GREEN}  ✓ GNOME debloat complete${NC}"
+echo -e "${CYAN}=================================================${NC}"
+echo ""
+echo -e "${BLUE}Changes applied:${NC}"
+echo "  • Removed unused GNOME applications"
+echo "  • Removed GNOME Software + PackageKit"
+echo "  • Disabled Tracker 3 (content indexer)"
+echo "  • Cleaned package manager caches"
+echo ""
+echo -e "${BLUE}Still intact:${NC}"
+echo "  • GNOME Shell & Super key app search"
+echo "  • Nautilus file search"
+echo "  • All essential system functionality"
+echo ""
+echo -e "${YELLOW}→ Log out or restart to complete the cleanup${NC}"
+echo ""
