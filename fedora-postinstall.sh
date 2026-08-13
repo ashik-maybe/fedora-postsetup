@@ -64,6 +64,14 @@ else
     log "fastestmirror already configured"
 fi
 
+# max_downloads_per_mirror limits simultaneous connections per mirror
+if ! grep -q "max_downloads_per_mirror" "$DNF_CONF"; then
+    echo "max_downloads_per_mirror=5" >> "$DNF_CONF"
+    log "Added max_downloads_per_mirror=5"
+else
+    log "max_downloads_per_mirror already configured"
+fi
+
 # ----------------------------------------------------------------------
 # 2. System Refresh & Update
 # ----------------------------------------------------------------------
@@ -125,6 +133,7 @@ echo ""
 log "What was configured:"
 echo "  ✓ DNF optimized for parallel downloads (max_parallel_downloads=10)"
 echo "  ✓ DNF configured with fastestmirror=True"
+echo "  ✓ DNF limited to 5 downloads per mirror (max_downloads_per_mirror=5)"
 echo "  ✓ RPM Fusion repositories (Free & Non-Free)"
 echo "  ✓ Flathub Flatpak repository"
 echo "  ✓ Cisco OpenH264 codecs"
