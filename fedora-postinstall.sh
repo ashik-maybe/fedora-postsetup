@@ -52,17 +52,16 @@ DNF_CONF="/etc/dnf/dnf.conf"
 if ! grep -q "max_parallel_downloads" "$DNF_CONF"; then
     echo "max_parallel_downloads=10" >> "$DNF_CONF"
     log "Added max_parallel_downloads=10"
+else
+    log "max_parallel_downloads already configured"
 fi
 
-# fastestmirror is DNF4-only, DNF5 ignores it safely
+# fastestmirror is required to be appended
 if ! grep -q "fastestmirror" "$DNF_CONF"; then
-    # Check if using DNF5 (Fedora 41+)
-    if dnf --version 2>/dev/null | grep -q "dnf5"; then
-        log "DNF5 detected - skipping fastestmirror (not supported in DNF5)"
-    else
-        echo "fastestmirror=True" >> "$DNF_CONF"
-        log "Added fastestmirror=True"
-    fi
+    echo "fastestmirror=True" >> "$DNF_CONF"
+    log "Added fastestmirror=True"
+else
+    log "fastestmirror already configured"
 fi
 
 # ----------------------------------------------------------------------
@@ -124,7 +123,8 @@ echo ""
 success "General Fedora post-installation setup complete!"
 echo ""
 log "What was configured:"
-echo "  ✓ DNF optimized for parallel downloads"
+echo "  ✓ DNF optimized for parallel downloads (max_parallel_downloads=10)"
+echo "  ✓ DNF configured with fastestmirror=True"
 echo "  ✓ RPM Fusion repositories (Free & Non-Free)"
 echo "  ✓ Flathub Flatpak repository"
 echo "  ✓ Cisco OpenH264 codecs"
