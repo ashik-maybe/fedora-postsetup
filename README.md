@@ -23,3 +23,14 @@ The main script automatically optimizes your DNF configuration, enables RPM Fusi
    ```bash
    ./fedora-postinstall.sh
    ```
+
+<details>
+<summary><b>📥 Download Essential Binaries (~/bin)</b></summary>
+   
+* [Zellij](https://github.com/zellij-org/zellij)
+* [bottom](https://github.com/clementtsang/bottom)
+* [FFmpeg Static Builds](https://johnvansickle.com/ffmpeg/)
+* [yt-dlp](https://github.com/yt-dlp/yt-dlp)
+* [Deno](https://github.com/denoland/deno)
+
+</details>
