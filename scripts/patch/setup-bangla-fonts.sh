@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-# setup-bangla-fonts.sh — Install Noto Bengali fonts and fontconfig fallback (Fedora 44+).
+# setup-bangla-fonts.sh — Install Noto Bengali fonts (Fedora 44+)
 #
 # Usage:
 #   ./setup-bangla-fonts.sh [--dry-run] [--yes] [--help]
 #
-# Exit codes: 0 ok · 1 error · 2 aborted
-# Idempotent: safe to re-run. Writes ~/.config/fontconfig/fonts.conf.
+# Exit codes: 0 ok, 1 error, 2 aborted.
+# Safe to re-run. Writes conf.d/99-bangla.conf. Fonts only, no input method.
 
 set -euo pipefail
 IFS=$'\n\t'
@@ -14,11 +14,10 @@ IFS=$'\n\t'
 # 0. Config
 readonly FONT_PACKAGES=(
     google-noto-sans-bengali-fonts
-    google-noto-sans-bengali-ui-fonts
     google-noto-serif-bengali-fonts
 )
-readonly FONTCONF_DIR="$HOME/.config/fontconfig"
-readonly FONTCONF_FILE="$FONTCONF_DIR/fonts.conf"
+readonly FONTCONF_DIR="$HOME/.config/fontconfig/conf.d"
+readonly FONTCONF_FILE="$FONTCONF_DIR/99-bangla.conf"
 
 DRY_RUN=false
 ASSUME_YES=false
@@ -67,7 +66,7 @@ step_fonts() {
 }
 
 step_fontconfig() {
-    log "Configuring fontconfig fallback ($FONTCONF_FILE)..."
+    log "Writing fontconfig snippet ($FONTCONF_FILE)..."
     if $DRY_RUN; then
         run mkdir -p "$FONTCONF_DIR"
         return 0
@@ -77,27 +76,41 @@ step_fontconfig() {
 <?xml version="1.0"?>
 <!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
 <fontconfig>
-    <match target="pattern">
-        <test qual="any" name="family"><string>sans-serif</string></test>
-        <edit name="family" mode="prepend" binding="strong">
-            <string>Noto Sans Bengali UI</string>
-            <string>Noto Sans Bengali</string>
-        </edit>
+    <match>
+        <test name="lang" compare="contains"><string>bn</string></test>
+        <test name="family"><string>sans-serif</string></test>
+        <edit name="family" mode="prepend"><string>Noto Sans Bengali</string></edit>
     </match>
-    <match target="pattern">
-        <test qual="any" name="family"><string>serif</string></test>
-        <edit name="family" mode="prepend" binding="strong">
-            <string>Noto Serif Bengali</string>
-        </edit>
+    <match>
+        <test name="lang" compare="contains"><string>bn</string></test>
+        <test name="family"><string>serif</string></test>
+        <edit name="family" mode="prepend"><string>Noto Serif Bengali</string></edit>
+    </match>
+    <match>
+        <test name="lang" compare="contains"><string>bn</string></test>
+        <test name="family"><string>monospace</string></test>
+        <edit name="family" mode="prepend"><string>Noto Sans Bengali</string></edit>
     </match>
 </fontconfig>
 EOF
-    ok "Fontconfig written"
+    ok "fontconfig snippet written"
 }
 
 step_cache() {
     log "Rebuilding font cache..."
-    run fc-cache -fv
+    run fc-cache -f
+}
+
+step_verify() {
+    log "Verifying Bengali fonts..."
+    if $DRY_RUN; then
+        run fc-list :lang=bn family
+        return 0
+    fi
+    fc-list :lang=bn family | sort -u | sed 's/^/  /'
+    local match
+    match="$(fc-match 'sans-serif:lang=bn' 2>/dev/null || true)"
+    echo "  fc-match sans-serif:lang=bn -> $match"
 }
 
 # 4. Main
@@ -107,7 +120,9 @@ main() {
     step_fonts
     step_fontconfig
     step_cache
+    step_verify
     ok "Setup complete. Restart the browser."
+    log "For typing Bangla, install IBus Avro or OpenBangla."
 }
 
 main "$@"
