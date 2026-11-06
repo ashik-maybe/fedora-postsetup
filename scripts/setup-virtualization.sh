@@ -1,104 +1,130 @@
-#!/bin/bash
-# setup-virtualization.sh — Set up or remove Virt-Manager, QEMU, and KVM on Fedora 44
+#!/usr/bin/env bash
+
+# setup-virtualization.sh — Install or remove Virt-Manager, QEMU, KVM (Fedora 44+).
+#
 # Usage:
-#   ./setup-virtualization.sh           # Install and configure virtualization
-#   ./setup-virtualization.sh --remove  # Remove virtualization packages and config
-#   ./setup-virtualization.sh -r        # Same as --remove
+#   ./setup-virtualization.sh [--remove] [--dry-run] [--yes] [--help]
+#   ./setup-virtualization.sh -r [--dry-run] [--yes]
+#
+# Exit codes: 0 ok · 1 error · 2 aborted
+# Idempotent: safe to re-run.
 
 set -euo pipefail
+IFS=$'\n\t'
 
-# ──────────────────────────────────────────────────────────────
-# 🎨 Colors
-CYAN="\033[0;36m"
-YELLOW="\033[0;33m"
-GREEN="\033[0;32m"
-RED="\033[0;31m"
-RESET="\033[0m"
+# 0. Config
+readonly GROUP_NAME="@virtualization"
+readonly LIBVIRT_SOCKETS=(libvirtd.socket libvirtd-admin.socket libvirtd-ro.socket libvirtd.service)
 
-# ──────────────────────────────────────────────────────────────
-# 🛠 Helper
-run_cmd() {
-    echo -e "${CYAN}🔧 Running: $1${RESET}"
-    eval "$1"
+DRY_RUN=false
+ASSUME_YES=false
+REMOVE_MODE=false
+
+# 1. Helpers
+GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[0;33m'; RED='\033[0;31m'; CYAN='\033[0;36m'; NC='\033[0m'
+log()     { echo -e "${BLUE}[INFO]${NC} $1"; }
+ok()      { echo -e "${GREEN}[OK]${NC} $1"; }
+warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
+die()     { echo -e "${RED}[ERROR]${NC} $1" >&2; exit 1; }
+
+run() {
+    local IFS=' '
+    log "→ $*"
+    if $DRY_RUN; then return 0; fi
+    "$@"
 }
 
-# ──────────────────────────────────────────────────────────────
-# 📦 Install virtualization tools
-install_virtualization_packages() {
-    echo -e "${YELLOW}📦 Installing Virt-Manager, QEMU, and KVM tools...${RESET}"
-    run_cmd "sudo dnf install -y @virtualization"
-    echo -e "${GREEN}✅ Virtualization packages installed.${RESET}"
+usage() {
+    sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'
+    echo ""
+    echo "Options:"
+    echo "  --remove, -r  Remove virtualization instead of installing"
+    echo "  --dry-run     Print steps without changing the system"
+    echo "  --yes, -y     Skip confirmation prompts"
+    echo "  --help, -h    Show this help"
+    exit 0
 }
 
-# 🔌 Enable and start libvirtd
-enable_libvirtd_service() {
-    echo -e "${YELLOW}🔌 Enabling and starting libvirtd...${RESET}"
-    run_cmd "sudo systemctl enable --now libvirtd"
-    echo -e "${GREEN}✅ libvirtd is active and enabled at boot.${RESET}"
+confirm() {
+    if $ASSUME_YES || $DRY_RUN; then return 0; fi
+    local reply
+    read -rp "Proceed? (y/N): " -n 1 reply || true
+    echo ""
+    [[ "$reply" =~ ^[Yy]$ ]] || { warn "Cancelled."; exit 2; }
 }
 
-# 👤 Add current user to libvirt group (if not already a member)
-add_user_to_libvirt_group() {
-    echo -e "${YELLOW}👤 Checking if user '$USER' is in the 'libvirt' group...${RESET}"
-    if id -nG "$USER" | grep -qw "libvirt"; then
-        echo -e "${GREEN}✅ User '$USER' is already in the 'libvirt' group.${RESET}"
+# 2. Pre-flight guards
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --remove|-r) REMOVE_MODE=true ;;
+            --dry-run)   DRY_RUN=true ;;
+            --yes|-y)    ASSUME_YES=true ;;
+            --help|-h)   usage ;;
+            *) die "Unknown argument: $1 (try --help)" ;;
+        esac
+        shift
+    done
+}
+
+require_sudo() {
+    if $DRY_RUN; then warn "Dry-run: skip sudo check"; return 0; fi
+    sudo -v || die "Sudo required."
+}
+
+# 3. Steps
+step_install() {
+    log "Installing Virt-Manager, QEMU, and KVM..."
+    run sudo dnf install -y "$GROUP_NAME"
+    ok "Virtualization packages installed"
+}
+
+step_enable() {
+    log "Enabling and starting libvirtd..."
+    run sudo systemctl enable --now libvirtd
+    ok "libvirtd active and enabled at boot"
+}
+
+step_user_group() {
+    log "Checking '$USER' in libvirt group..."
+    if id -nG "$USER" 2>/dev/null | grep -qw libvirt; then
+        ok "User already in libvirt group"
     else
-        echo -e "${YELLOW}👤 Adding user '$USER' to libvirt group...${RESET}"
-        run_cmd "sudo usermod -aG libvirt $USER"
-        echo -e "${GREEN}✅ Added. You may need to log out and log back in for group changes to take effect.${RESET}"
+        run sudo usermod -aG libvirt "$USER"
+        warn "Log out and back in."
     fi
 }
 
-# ──────────────────────────────────────────────────────────────
-# 🗑 Remove virtualization setup
-remove_virtualization() {
-    echo -e "${YELLOW}🗑 Stopping libvirtd service...${RESET}"
-    run_cmd "sudo systemctl stop libvirtd.socket libvirtd-admin.socket libvirtd-ro.socket libvirtd.service 2>/dev/null || true"
-    run_cmd "sudo systemctl disable libvirtd.socket libvirtd-admin.socket libvirtd-ro.socket libvirtd.service 2>/dev/null || true"
-    echo -e "${GREEN}✅ libvirtd stopped and disabled.${RESET}"
-
-    echo -e "${YELLOW}🗑 Removing user '$USER' from libvirt group...${RESET}"
-    if id -nG "$USER" | grep -qw "libvirt"; then
-        run_cmd "sudo gpasswd -d $USER libvirt"
-        echo -e "${GREEN}✅ User '$USER' removed from libvirt group.${RESET}"
-    else
-        echo -e "${YELLOW}ℹ️  User '$USER' is not in the libvirt group, skipping.${RESET}"
+step_remove() {
+    log "Stopping and disabling libvirtd..."
+    local svc
+    for svc in "${LIBVIRT_SOCKETS[@]}"; do
+        run sudo systemctl stop "$svc"
+        run sudo systemctl disable "$svc"
+    done
+    if id -nG "$USER" 2>/dev/null | grep -qw libvirt; then
+        run sudo gpasswd -d "$USER" libvirt
     fi
-
-    echo -e "${YELLOW}🗑 Removing virtualization packages...${RESET}"
-    run_cmd "sudo dnf remove -y @virtualization"
-    echo -e "${GREEN}✅ Virtualization packages removed.${RESET}"
-
-    echo -e "${YELLOW}⚠️  Note: VM images and configurations in /var/lib/libvirt/ and ~/.config/libvirt/ were not removed.${RESET}"
-    echo -e "${YELLOW}   Remove them manually if desired.${RESET}"
+    log "Removing virtualization packages..."
+    run sudo dnf remove -y "$GROUP_NAME"
+    warn "VM images in /var/lib/libvirt/ and ~/.config/libvirt/ were kept."
 }
 
-# ──────────────────────────────────────────────────────────────
-# 🎯 Main script logic
+# 4. Main
 main() {
-    # Check for removal mode
-    if [[ "${1:-}" == "--remove" || "${1:-}" == "-r" ]]; then
-        clear
-        echo -e "${RED}🗑 Setting up to REMOVE Virt-Manager and KVM...${RESET}"
-        sudo -v || { echo -e "${RED}❌ Sudo required. Exiting.${RESET}"; exit 1; }
-        remove_virtualization
-        echo -e "${GREEN}🎉 Virt-Manager & KVM removal complete!${RESET}"
-        echo -e "${YELLOW}💡 You may want to log out and back in for group changes to take effect.${RESET}"
-        exit 0
+    parse_args "$@"
+    require_sudo
+    if $REMOVE_MODE; then
+        confirm
+        step_remove
+        ok "Removal complete."
+    else
+        step_install
+        step_enable
+        step_user_group
+        ok "Setup complete."
+        warn "Log out and back in."
     fi
-
-    # Default: Installation mode
-    clear
-    echo -e "${CYAN}🚀 Setting up Virt-Manager and KVM...${RESET}"
-    sudo -v || { echo -e "${RED}❌ Sudo required. Exiting.${RESET}"; exit 1; }
-
-    install_virtualization_packages
-    enable_libvirtd_service
-    add_user_to_libvirt_group
-
-    echo -e "${GREEN}🎉 Virt-Manager & KVM setup complete!${RESET}"
-    echo -e "${YELLOW}💡 You may need to log out and log back in for group changes to take effect.${RESET}"
 }
 
-# Run main function with all arguments
 main "$@"
