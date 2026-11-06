@@ -1,143 +1,156 @@
 #!/usr/bin/env bash
 
-# fedora-postinstall.sh — General Fedora Post-Installation Setup (Fedora 44+)
-# Enables RPM Fusion, Flathub, multimedia codecs, and optimizes DNF
+# fedora-postinstall.sh — Install baseline Fedora software (Fedora 44+).
+# Enables RPM Fusion, Flathub, multimedia codecs, and optimizes DNF.
 #
 # Usage:
-#   sudo ./fedora-postinstall.sh
+#   sudo ./fedora-postinstall.sh [--dry-run] [--yes] [--help]
+#
+# Exit codes: 0 ok · 1 error · 2 aborted
+# Idempotent: safe to re-run. Must run as root (except --dry-run).
 
-# Exit on error, unset variable, or failed pipe
 set -euo pipefail
+IFS=$'\n\t'
 
-# Visual colors for output
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[0;33m'
-RED='\033[0;31m'
-NC='\033[0m' # No Color
+# 0. Config
+readonly DNF_CONF="/etc/dnf/dnf.conf"
+readonly DNF_KEYS=(
+    "max_parallel_downloads=10"
+    "fastestmirror=True"
+    "max_downloads_per_mirror=5"
+)
+readonly RPMFUSION_URLS=(
+    "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-%s.noarch.rpm"
+    "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-%s.noarch.rpm"
+)
 
-log() {
-    echo -e "${BLUE}[INFO]${NC} $1"
+DRY_RUN=false
+ASSUME_YES=false
+
+# 1. Helpers
+GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[0;33m'; RED='\033[0;31m'; NC='\033[0m'
+log()     { echo -e "${BLUE}[INFO]${NC} $1"; }
+ok()      { echo -e "${GREEN}[OK]${NC} $1"; }
+warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
+die()     { echo -e "${RED}[ERROR]${NC} $1" >&2; exit 1; }
+
+run() {
+    local IFS=' '
+    log "→ $*"
+    if $DRY_RUN; then return 0; fi
+    "$@"
 }
 
-success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
+usage() {
+    sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'
+    echo ""
+    echo "Options:"
+    echo "  --dry-run   Print steps without changing the system"
+    echo "  --yes, -y   Skip confirmation prompts"
+    echo "  --help, -h  Show this help"
+    exit 0
 }
 
-warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
+# 2. Pre-flight guards
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --dry-run) DRY_RUN=true ;;
+            --yes|-y)  ASSUME_YES=true ;;
+            --help|-h) usage ;;
+            *) die "Unknown argument: $1 (try --help)" ;;
+        esac
+        shift
+    done
 }
 
-# Ensure script is run with root privileges
-if [ "$EUID" -ne 0 ]; then
-    echo -e "${RED}[ERROR] Please run this script with sudo:${NC}"
-    echo "  sudo $0"
-    exit 1
-fi
+require_root() {
+    if $DRY_RUN; then warn "Dry-run: skip root check"; return 0; fi
+    [[ $EUID -eq 0 ]] || die "Please run with sudo: sudo $0"
+}
 
-# Check if running on Fedora
-if [ ! -f /etc/fedora-release ]; then
-    warn "This script is designed for Fedora. Proceed with caution."
-fi
+require_fedora() {
+    [[ -f /etc/fedora-release ]] || warn "Not Fedora (/etc/fedora-release missing) — proceeding with caution."
+}
 
-log "Starting General Fedora Post-Installation Setup..."
+# 3. Steps
+step_optimise_dnf() {
+    log "Configuring DNF for faster downloads..."
+    local kv
+    for kv in "${DNF_KEYS[@]}"; do
+        local key="${kv%%=*}"
+        if grep -q "^${key}=" "$DNF_CONF" 2>/dev/null; then
+            log "${key} already configured"
+        else
+            run bash -c "printf '%s\n' '$kv' >> '$DNF_CONF'"
+            ok "Added $kv"
+        fi
+    done
+}
 
-# ----------------------------------------------------------------------
-# 1. Optimize DNF Configuration
-# ----------------------------------------------------------------------
-log "Configuring DNF for faster downloads..."
-DNF_CONF="/etc/dnf/dnf.conf"
+step_system_update() {
+    log "Refreshing repositories and upgrading packages..."
+    run dnf upgrade --refresh -y
+}
 
-# max_parallel_downloads works in both DNF4 and DNF5
-if ! grep -q "max_parallel_downloads" "$DNF_CONF"; then
-    echo "max_parallel_downloads=10" >> "$DNF_CONF"
-    log "Added max_parallel_downloads=10"
-else
-    log "max_parallel_downloads already configured"
-fi
+step_rpmfusion() {
+    log "Enabling RPM Fusion (Free & Non-Free)..."
+    local ver url
+    ver="$(rpm -E %fedora 2>/dev/null || echo 44)"
+    for url in "${RPMFUSION_URLS[@]}"; do
+        run dnf install -y "$(printf "$url" "$ver")"
+    done
+    run dnf install -y rpmfusion-free-appstream-data rpmfusion-nonfree-appstream-data
+}
 
-# fastestmirror is required to be appended
-if ! grep -q "fastestmirror" "$DNF_CONF"; then
-    echo "fastestmirror=True" >> "$DNF_CONF"
-    log "Added fastestmirror=True"
-else
-    log "fastestmirror already configured"
-fi
+step_flatpak_openh264() {
+    log "Installing Flatpak and Flathub..."
+    if command -v flatpak &>/dev/null; then
+        run flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+        ok "Flathub repository enabled"
+    else
+        warn "Flatpak not installed — skipping Flathub setup"
+    fi
 
-# max_downloads_per_mirror limits simultaneous connections per mirror
-if ! grep -q "max_downloads_per_mirror" "$DNF_CONF"; then
-    echo "max_downloads_per_mirror=5" >> "$DNF_CONF"
-    log "Added max_downloads_per_mirror=5"
-else
-    log "max_downloads_per_mirror already configured"
-fi
+    log "Enabling Cisco OpenH264 repository..."
+    if ! dnf config-manager --help &>/dev/null; then
+        run dnf install -y dnf-plugins-core
+    fi
+    run dnf config-manager setopt fedora-cisco-openh264.enabled=1
+    run dnf install -y openh264 gstreamer1-plugin-openh264 mozilla-openh264
+}
 
-# ----------------------------------------------------------------------
-# 2. System Refresh & Update
-# ----------------------------------------------------------------------
-log "Refreshing repositories and upgrading existing packages..."
-dnf upgrade --refresh -y
+step_codecs() {
+    log "Swapping to full FFmpeg build from RPM Fusion..."
+    run dnf swap -y ffmpeg-free ffmpeg --allowerasing
+    log "Installing GStreamer multimedia plugins..."
+    run dnf update -y @multimedia --setopt="install_weak_deps=False" --exclude=PackageKit-gstreamer-plugin
+}
 
-# ----------------------------------------------------------------------
-# 3. Enable RPM Fusion Repositories & AppStream Metadata
-# ----------------------------------------------------------------------
-log "Enabling RPM Fusion (Free & Non-Free)..."
-dnf install -y \
-  "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm" \
-  "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm"
+step_cleanup() {
+    log "Removing unused packages and cache..."
+    run dnf autoremove -y
+    run dnf clean all
+}
 
-log "Installing RPM Fusion AppStream metadata for Software Center..."
-dnf install -y rpmfusion-free-appstream-data rpmfusion-nonfree-appstream-data
+# 4. Main
+main() {
+    parse_args "$@"
+    require_root
+    require_fedora
+    log "Starting Fedora post-installation setup..."
+    step_optimise_dnf
+    step_system_update
+    step_rpmfusion
+    step_flatpak_openh264
+    step_codecs
+    step_cleanup
+    echo ""
+    ok "Setup complete."
+    echo "DNF: parallel downloads, fastestmirror, 5 per mirror."
+    echo "RPM Fusion, Flathub, OpenH264, FFmpeg: installed."
+    echo "Codecs and cleanup: complete."
+    warn "Restart the machine."
+}
 
-# ----------------------------------------------------------------------
-# 4. Enable Flathub & Cisco OpenH264
-# ----------------------------------------------------------------------
-log "Setting up Flatpak and Flathub..."
-if command -v flatpak &> /dev/null; then
-    flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-    log "Flathub repository enabled"
-else
-    warn "Flatpak not installed - skipping Flathub setup"
-fi
-
-log "Enabling Cisco OpenH264 repository for Firefox and WebRTC..."
-# Ensure dnf config-manager plugin is available
-if ! dnf config-manager --help &>/dev/null; then
-    dnf install -y dnf-plugins-core
-fi
-dnf config-manager setopt fedora-cisco-openh264.enabled=1
-dnf install -y openh264 gstreamer1-plugin-openh264 mozilla-openh264
-
-# ----------------------------------------------------------------------
-# 5. Swap FFmpeg & Install Multimedia Codecs
-# ----------------------------------------------------------------------
-log "Swapping to full FFmpeg build from RPM Fusion..."
-dnf swap -y ffmpeg-free ffmpeg --allowerasing
-
-log "Installing GStreamer multimedia plugins..."
-dnf update -y @multimedia --setopt="install_weak_deps=False" --exclude=PackageKit-gstreamer-plugin
-
-# ----------------------------------------------------------------------
-# 6. Cleanup
-# ----------------------------------------------------------------------
-log "Cleaning up unused packages and temporary cache..."
-dnf autoremove -y
-dnf clean all
-
-# ----------------------------------------------------------------------
-# Done
-# ----------------------------------------------------------------------
-echo ""
-success "General Fedora post-installation setup complete!"
-echo ""
-log "What was configured:"
-echo "  ✓ DNF optimized for parallel downloads (max_parallel_downloads=10)"
-echo "  ✓ DNF configured with fastestmirror=True"
-echo "  ✓ DNF limited to 5 downloads per mirror (max_downloads_per_mirror=5)"
-echo "  ✓ RPM Fusion repositories (Free & Non-Free)"
-echo "  ✓ Flathub Flatpak repository"
-echo "  ✓ Cisco OpenH264 codecs"
-echo "  ✓ Full FFmpeg with multimedia codecs"
-echo "  ✓ System cleaned and updated"
-echo ""
-warn "Please restart your machine to apply all changes."
+main "$@"
