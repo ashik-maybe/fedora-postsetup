@@ -1,125 +1,167 @@
-#!/bin/bash
-# setup-warp-wireguard.sh — Cloudflare WARP via WireGuard for Fedora 44+
+#!/usr/bin/env bash
+
+# setup-cloudflare-warp-wireguard.sh — Install Cloudflare WARP from the official repo (Fedora 44+).
+# Installs cloudflare-warp (warp-cli + warp-svc) and registers the device.
+#
 # Usage:
-#   ./setup-warp-wireguard.sh           # Install/configure WARP
-#   ./setup-warp-wireguard.sh -r        # Remove WARP completely
+#   ./setup-cloudflare-warp-wireguard.sh [--dry-run] [--yes] [--help]
+#   ./setup-cloudflare-warp-wireguard.sh --remove [-r] [--dry-run] [--yes]
+#
+# Exit codes: 0 ok, 1 error, 2 aborted. Safe to re-run.
 
 set -euo pipefail
+IFS=$'\n\t'
 
-CYAN="\033[0;36m"
-YELLOW="\033[0;33m"
-GREEN="\033[0;32m"
-RED="\033[0;31m"
-RESET="\033[0m"
+# 0. Config
+readonly WARP_REPO="/etc/yum.repos.d/cloudflare-warp.repo"
+readonly WARP_REPO_URL="https://pkg.cloudflareclient.com/rpm/\$releasever"
+readonly WARP_GPGKEY="https://pkg.cloudflareclient.com/pubkey.gpg"
 
-run_cmd() {
-    echo -e "${CYAN}🔧 Running: $1${RESET}"
-    eval "$1"
+DRY_RUN=false
+ASSUME_YES=false
+REMOVE_MODE=false
+
+# 1. Helpers
+GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[0;33m'; RED='\033[0;31m'; CYAN='\033[0;36m'; NC='\033[0m'
+log()     { echo -e "${BLUE}[INFO]${NC} $1"; }
+ok()      { echo -e "${GREEN}[OK]${NC} $1"; }
+warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
+die()     { echo -e "${RED}[ERROR]${NC} $1" >&2; exit 1; }
+
+run() {
+    local IFS=' '
+    log "→ $*"
+    if $DRY_RUN; then return 0; fi
+    "$@"
 }
 
-# ── Reversal / Uninstall
-if [[ "${1:-}" == "-r" || "${1:-}" == "--reverse" ]]; then
-    echo -e "${YELLOW}🛑 Removing Cloudflare WARP configuration...${RESET}"
-
-    if ip link show warp &>/dev/null; then
-        run_cmd "sudo wg-quick down warp"
-    fi
-
-    if nmcli connection show "Cloudflare WARP" &>/dev/null; then
-        run_cmd "sudo nmcli connection delete 'Cloudflare WARP'"
-    fi
-    if nmcli connection show warp &>/dev/null; then
-        run_cmd "sudo nmcli connection delete warp"
-    fi
-
-    if [ -f "/etc/wireguard/warp.conf" ]; then
-        run_cmd "sudo rm -f /etc/wireguard/warp.conf"
-    fi
-
-    echo -e "${GREEN}✨ Removal complete.${RESET}"
+usage() {
+    sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'
+    echo ""
+    echo "Options:"
+    echo "  --remove, -r  Remove WARP (repo, package, registration)"
+    echo "  --dry-run     Print steps without changing the system"
+    echo "  --yes, -y     Skip confirmation prompts"
+    echo "  --help, -h    Show this help"
     exit 0
-fi
+}
 
-echo -e "${YELLOW}🚀 Cloudflare WARP via WireGuard — Setup${RESET}"
+confirm() {
+    if $ASSUME_YES || $DRY_RUN; then return 0; fi
+    local reply
+    read -rp "Proceed? (y/N): " -n 1 reply || true
+    echo ""
+    [[ "$reply" =~ ^[Yy]$ ]] || { warn "Cancelled."; exit 2; }
+}
 
-# ── Ensure curl is available (Fedora minimal might not have it)
-if ! command -v curl &>/dev/null; then
-    run_cmd "sudo dnf install -y curl"
-fi
+# 2. Pre-flight guards
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --remove|-r|--reverse) REMOVE_MODE=true ;;
+            --dry-run)  DRY_RUN=true ;;
+            --yes|-y)   ASSUME_YES=true ;;
+            --help|-h)  usage ;;
+            *) die "Unknown argument: $1 (try --help)" ;;
+        esac
+        shift
+    done
+}
 
-# ── Handle existing profile
-if [ -f "/etc/wireguard/warp.conf" ]; then
-    echo -e "${YELLOW}⚠️ Existing WARP configuration found.${RESET}"
-    read -p "Re-register for a fresh identity? (y/N): " -n 1 -r
-    echo
+require_sudo() {
+    if $DRY_RUN; then warn "Dry-run: skip sudo check"; return 0; fi
+    sudo -v || die "Sudo required."
+}
 
-    if [[ "$REPLY" =~ ^[Yy]$ ]]; then
-        echo -e "${YELLOW}🧹 Removing old profile...${RESET}"
-        sudo wg-quick down warp &>/dev/null || true
-        sudo nmcli connection delete "Cloudflare WARP" &>/dev/null || true
-        sudo nmcli connection delete warp &>/dev/null || true
-        sudo rm -f /etc/wireguard/warp.conf
-        echo -e "${GREEN}✅ Old profile cleared.${RESET}"
+# 3. Steps
+step_repo() {
+    if [[ -f "$WARP_REPO" ]]; then
+        log "Official Cloudflare repo already present"
+        return 0
     fi
-fi
+    log "Creating official Cloudflare WARP repo..."
+    if $DRY_RUN; then
+        run sudo install -m 644 /dev/null "$WARP_REPO"
+        return 0
+    fi
+    sudo install -m 644 /dev/null "$WARP_REPO"
+    sudo tee "$WARP_REPO" >/dev/null <<EOF
+[cloudflare-warp-stable]
+name=cloudflare-warp-stable
+baseurl=$WARP_REPO_URL
+enabled=1
+type=rpm
+gpgcheck=1
+gpgkey=$WARP_GPGKEY
+EOF
+    ok "Repo created"
+}
 
-# ── Install wireguard-tools
-if ! command -v wg-quick &>/dev/null; then
-    echo -e "${YELLOW}📦 Installing wireguard-tools...${RESET}"
-    run_cmd "sudo dnf install -y wireguard-tools"
-else
-    echo -e "${GREEN}✅ wireguard-tools already installed.${RESET}"
-fi
+step_install() {
+    log "Installing cloudflare-warp..."
+    run sudo dnf install -y cloudflare-warp
+    ok "cloudflare-warp installed"
+}
 
-# ── Generate profile via wgcf
-if [ ! -f "/etc/wireguard/warp.conf" ]; then
-    echo -e "${YELLOW}🌐 Generating WARP WireGuard profile...${RESET}"
+step_service() {
+    log "Enabling and starting warp-svc..."
+    run sudo systemctl enable --now warp-svc
+}
 
-    WGCF_URL=$(curl -s https://api.github.com/repos/ViRb3/wgcf/releases/latest | grep -oE '"browser_download_url": "[^"]*linux_amd64"' | cut -d'"' -f4)
+step_register() {
+    log "Registering this device with WARP..."
+    if $DRY_RUN; then
+        run warp-cli registration new
+        return 0
+    fi
+    if warp-cli registration show 2>/dev/null | grep -q "Account"; then
+        log "Already registered"
+    else
+        run warp-cli registration new
+    fi
+    run warp-cli mode warp
+    run warp-cli connect
+    ok "WARP connected"
+}
 
-    WORKDIR=$(mktemp -d)
-    cd "$WORKDIR"
+step_remove() {
+    log "Disconnecting WARP..."
+    run warp-cli disconnect
+    run warp-cli registration delete
+    log "Stopping warp-svc..."
+    run sudo systemctl disable --now warp-svc
+    log "Removing cloudflare-warp package..."
+    run sudo dnf remove -y cloudflare-warp
+    if [[ -f "$WARP_REPO" ]]; then
+        run sudo rm -f "$WARP_REPO"
+    fi
+    ok "WARP removed"
+}
 
-    run_cmd "curl -fsSL $WGCF_URL -o wgcf"
-    run_cmd "chmod +x wgcf"
+# 4. Main
+main() {
+    parse_args "$@"
+    require_sudo
+    if $REMOVE_MODE; then
+        echo -e "${YELLOW}Removing Cloudflare WARP...${NC}"
+        confirm
+        step_remove
+        echo ""
+        ok "Removal complete."
+        echo "Status:  warp-cli status"
+        echo "Connect: warp-cli connect"
+        return 0
+    fi
+    log "Installing Cloudflare WARP..."
+    step_repo
+    step_install
+    step_service
+    step_register
+    echo ""
+    ok "Setup complete."
+    echo "  Status:  warp-cli status"
+    echo "  Connect: warp-cli connect"
+    echo "  Remove:  ./$(basename "$0") --remove"
+}
 
-    run_cmd "./wgcf register --accept-tos"
-    run_cmd "./wgcf generate"
-
-    run_cmd "sudo mkdir -p /etc/wireguard"
-    run_cmd "sudo mv wgcf-profile.conf /etc/wireguard/warp.conf"
-
-    cd - > /dev/null
-    rm -rf "$WORKDIR"
-    echo -e "${GREEN}✅ Profile generated.${RESET}"
-else
-    echo -e "${GREEN}✅ Using existing WARP profile.${RESET}"
-fi
-
-# ── NetworkManager integration
-if ! nmcli connection show "Cloudflare WARP" &>/dev/null; then
-    echo -e "${YELLOW}⚙️ Adding to NetworkManager...${RESET}"
-
-    run_cmd "sudo nmcli connection import type wireguard file /etc/wireguard/warp.conf"
-    run_cmd "sudo nmcli connection modify warp connection.id 'Cloudflare WARP'"
-    run_cmd "sudo nmcli connection modify 'Cloudflare WARP' ipv4.dns-priority -1"
-
-    echo -e "${GREEN}✅ NetworkManager integration complete.${RESET}"
-else
-    echo -e "${GREEN}✅ NetworkManager already configured.${RESET}"
-fi
-
-# ── Done
-echo -e "${CYAN}
-🎉 Setup complete!
-
-🖥️  GUI: Toggle 'Cloudflare WARP' in your network panel
-
-📟 Terminal:
-  Connect:    sudo wg-quick up warp
-  Status:     sudo wg show warp
-  Disconnect: sudo wg-quick down warp
-
-❌ Remove everything:
-  ./$(basename "$0") -r
-${RESET}"
+main "$@"
