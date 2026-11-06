@@ -1,135 +1,141 @@
 #!/usr/bin/env bash
 
-# setup-intel.sh — Intel Hardware Acceleration & Media Codecs for Productivity on Fedora
-# Optimized for Intel HD Graphics 520 (Skylake) and newer — 3D, Video Editing, Compute
+# setup-intel-drivers.sh — Intel VA-API, OpenCL, Vulkan, thermald (Fedora 44+)
+# Use for Intel HD 520 and newer.
 #
 # Usage:
-#   sudo ./setup-intel.sh
+#   sudo ./setup-intel-drivers.sh [--dry-run] [--yes] [--help]
+#
+# Exit codes: 0 ok · 1 error · 2 aborted
+# Idempotent: safe to re-run. Must run as root (except --dry-run).
 
 set -euo pipefail
+IFS=$'\n\t'
 
-# Visual colors for output
-CYAN='\033[0;36m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-RED='\033[0;31m'
-NC='\033[0m'
+# 0. Config
+readonly VAAPI_PKGS=(intel-media-driver libva-intel-driver libva libva-utils)
+readonly COMPUTE_PKGS=(intel-opencl intel-mediasdk)
+readonly VULKAN_PKGS=(mesa-vulkan-drivers vulkan-tools)
+readonly ENV_FILE="/etc/environment"
+readonly PROFILE_FILE="/etc/profile.d/intel-media.sh"
+readonly VAAPI_EXPORT="LIBVA_DRIVER_NAME=iHD"
 
-log() {
-    echo -e "${CYAN}[INFO]${NC} $1"
+DRY_RUN=false
+ASSUME_YES=false
+
+# 1. Helpers
+GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[0;33m'; RED='\033[0;31m'; NC='\033[0m'
+log()     { echo -e "${BLUE}[INFO]${NC} $1"; }
+ok()      { echo -e "${GREEN}[OK]${NC} $1"; }
+warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
+die()     { echo -e "${RED}[ERROR]${NC} $1" >&2; exit 1; }
+
+run() {
+    local IFS=' '
+    log "→ $*"
+    if $DRY_RUN; then return 0; fi
+    "$@"
 }
 
-success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
+usage() {
+    sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'
+    echo ""
+    echo "Options:"
+    echo "  --dry-run   Print steps without changing the system"
+    echo "  --yes, -y   Skip confirmation prompts"
+    echo "  --help, -h  Show this help"
+    exit 0
 }
 
-warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
+# 2. Pre-flight guards
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --dry-run) DRY_RUN=true ;;
+            --yes|-y)  ASSUME_YES=true ;;
+            --help|-h) usage ;;
+            *) die "Unknown argument: $1 (try --help)" ;;
+        esac
+        shift
+    done
 }
 
-# Ensure script is run with root privileges
-if [ "$EUID" -ne 0 ]; then
-    echo -e "${RED}[ERROR] Please run this script with sudo:${NC}"
-    echo "  sudo $0"
-    exit 1
-fi
+require_root() {
+    if $DRY_RUN; then warn "Dry-run: skip root check"; return 0; fi
+    [[ $EUID -eq 0 ]] || die "Please run with sudo: sudo $0"
+}
 
-# Check for Intel GPU
-if ! lspci | grep -iE "vga|3d|display" | grep -qi "intel"; then
-    warn "No Intel GPU detected. Some packages may be unnecessary."
-fi
+check_intel_gpu() {
+    if lspci 2>/dev/null | grep -iE "vga|3d|display" | grep -qi "intel"; then
+        ok "Intel GPU detected"
+    else
+        warn "No Intel GPU detected — some packages may be unnecessary."
+    fi
+}
 
-log "Starting Intel-specific Hardware Acceleration & Media Optimization..."
+# 3. Steps
+step_vaapi() {
+    log "Installing Intel Media Driver (iHD) and VA-API utilities..."
+    run dnf install -y "${VAAPI_PKGS[@]}"
+}
 
-# ----------------------------------------------------------------------
-# 1. Install VA-API & Intel Media Drivers
-# ----------------------------------------------------------------------
-log "Installing Intel Media Driver (iHD) and VA-API utilities..."
-
-# intel-media-driver: Modern iHD driver (Broadwell+ / HD 520 / 6th Gen+)
-# libva-intel-driver: Legacy i965 driver (fallback for older apps)
-# libva / libva-utils: Core VA-API library and vainfo inspection tool
-dnf install -y \
-    intel-media-driver \
-    libva-intel-driver \
-    libva \
-    libva-utils
-
-# ----------------------------------------------------------------------
-# 2. Configure System Environment for iHD Driver
-# ----------------------------------------------------------------------
-log "Configuring environment variables for Intel VA-API..."
-
-# Set globally via /etc/environment (works with most shells)
-ENV_FILE="/etc/environment"
-if ! grep -q "LIBVA_DRIVER_NAME" "$ENV_FILE" 2>/dev/null; then
-    echo "LIBVA_DRIVER_NAME=iHD" >> "$ENV_FILE"
-    log "Set LIBVA_DRIVER_NAME=iHD in /etc/environment"
-fi
-
-# Also set via profile.d for better DM compatibility (GDM, SDDM, etc.)
-PROFILE_FILE="/etc/profile.d/intel-media.sh"
-if [ ! -f "$PROFILE_FILE" ]; then
-    cat > "$PROFILE_FILE" << 'EOF'
+step_env() {
+    log "Configuring environment for iHD driver..."
+    if grep -qxF "$VAAPI_EXPORT" "$ENV_FILE" 2>/dev/null; then
+        log "$VAAPI_EXPORT already in $ENV_FILE"
+    else
+        run bash -c "printf '%s\n' '$VAAPI_EXPORT' >> '$ENV_FILE'"
+        ok "Set $VAAPI_EXPORT in $ENV_FILE"
+    fi
+    if [[ -f "$PROFILE_FILE" ]]; then
+        log "$PROFILE_FILE already exists"
+    else
+        run bash -c "cat > '$PROFILE_FILE' <<'EOF'
 # Intel Media Driver Configuration
-export LIBVA_DRIVER_NAME=iHD
-EOF
-    chmod 644 "$PROFILE_FILE"
-    log "Created $PROFILE_FILE for better display manager compatibility"
-fi
+export $VAAPI_EXPORT
+EOF"
+        run chmod 644 "$PROFILE_FILE"
+        ok "Created $PROFILE_FILE"
+    fi
+}
 
-# ----------------------------------------------------------------------
-# 3. Intel OpenCL & Media SDK for Compute Tasks
-# ----------------------------------------------------------------------
-log "Installing Intel OpenCL runtime and Media SDK..."
+step_compute() {
+    log "Installing Intel OpenCL runtime and Media SDK..."
+    run dnf install -y "${COMPUTE_PKGS[@]}"
+}
 
-# OpenCL: GPU compute acceleration (Blender, DaVinci Resolve, darktable)
-# Media SDK: Hardware encoding/decoding API (OBS Studio, FFmpeg, HandBrake)
-dnf install -y \
-    intel-opencl \
-    intel-mediasdk
+step_vulkan() {
+    log "Installing Vulkan drivers..."
+    run dnf install -y "${VULKAN_PKGS[@]}"
+}
 
-# ----------------------------------------------------------------------
-# 4. Vulkan Support (optional but useful for modern 3D apps)
-# ----------------------------------------------------------------------
-log "Installing Vulkan drivers for 3D viewport acceleration..."
+step_monitoring() {
+    log "Installing Intel GPU monitoring tools..."
+    run dnf install -y intel-gpu-tools
+}
 
-# mesa-vulkan-drivers: Intel ANV Vulkan driver (Blender viewport, modern compositors)
-# vulkan-tools: vulkaninfo diagnostic utility
-dnf install -y \
-    mesa-vulkan-drivers \
-    vulkan-tools
+step_thermald() {
+    log "Installing Thermald..."
+    run dnf install -y thermald
+    run systemctl enable --now thermald
+}
 
-# ----------------------------------------------------------------------
-# 5. Intel GPU Monitoring Tools
-# ----------------------------------------------------------------------
-log "Installing Intel GPU monitoring utilities..."
+# 4. Main
+main() {
+    parse_args "$@"
+    require_root
+    check_intel_gpu
+    step_vaapi
+    step_env
+    step_compute
+    step_vulkan
+    step_monitoring
+    step_thermald
+    echo ""
+    ok "Setup complete."
+    echo "Verify with: vainfo · vulkaninfo --summary · clinfo · sudo intel_gpu_top"
+    echo "Encode test: ffmpeg -hwaccel vaapi -hwaccel_output_format vaapi -i input.mp4 -c:v h264_vaapi output.mp4"
+    warn "Restart or log out."
+}
 
-# intel-gpu-tools: Provides intel_gpu_top for real-time GPU usage monitoring
-dnf install -y intel-gpu-tools
-
-# ----------------------------------------------------------------------
-# 6. Thermal & Power Management
-# ----------------------------------------------------------------------
-log "Setting up Thermald for Intel thermal management..."
-
-# thermald: Prevents thermal throttling on mobile Intel chips during sustained workloads
-dnf install -y thermald
-systemctl enable --now thermald
-
-# ----------------------------------------------------------------------
-# 7. Verification & Diagnostics Summary
-# ----------------------------------------------------------------------
-echo ""
-success "Intel productivity setup complete!"
-echo "----------------------------------------------------------------------"
-log "To verify hardware acceleration is working on your GPU, run:"
-echo "  1. vainfo                     (Should list iHD driver and supported codecs)"
-echo "  2. vulkaninfo --summary       (Should detect Intel ANV driver)"
-echo "  3. clinfo                     (Should show Intel OpenCL platform)"
-echo "  4. sudo intel_gpu_top         (Real-time GPU utilization monitor)"
-echo ""
-log "For video encoding benchmarks, try:"
-echo "  ffmpeg -hwaccel vaapi -hwaccel_output_format vaapi -i input.mp4 -c:v h264_vaapi output.mp4"
-echo "----------------------------------------------------------------------"
-warn "Please restart your computer or log out to apply environment variable changes."
+main "$@"
