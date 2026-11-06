@@ -1,38 +1,82 @@
 #!/usr/bin/env bash
 
-# Exit on error, unset variable, or failed pipe
+# setup-bangla-fonts.sh — Install Noto Bengali fonts and fontconfig fallback (Fedora 44+).
+#
+# Usage:
+#   ./setup-bangla-fonts.sh [--dry-run] [--yes] [--help]
+#
+# Exit codes: 0 ok · 1 error · 2 aborted
+# Idempotent: safe to re-run. Writes ~/.config/fontconfig/fonts.conf.
+
 set -euo pipefail
+IFS=$'\n\t'
 
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# 0. Config
+readonly FONT_PACKAGES=(
+    google-noto-sans-bengali-fonts
+    google-noto-sans-bengali-ui-fonts
+    google-noto-serif-bengali-fonts
+)
+readonly FONTCONF_DIR="$HOME/.config/fontconfig"
+readonly FONTCONF_FILE="$FONTCONF_DIR/fonts.conf"
 
-log() {
-    echo -e "${BLUE}[INFO]${NC} $1"
+DRY_RUN=false
+ASSUME_YES=false
+
+# 1. Helpers
+GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[0;33m'; RED='\033[0;31m'; NC='\033[0m'
+log()     { echo -e "${BLUE}[INFO]${NC} $1"; }
+ok()      { echo -e "${GREEN}[OK]${NC} $1"; }
+warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
+die()     { echo -e "${RED}[ERROR]${NC} $1" >&2; exit 1; }
+
+run() {
+    local IFS=' '
+    log "→ $*"
+    if $DRY_RUN; then return 0; fi
+    "$@"
 }
 
-success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
+usage() {
+    sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'
+    echo ""
+    echo "Options:"
+    echo "  --dry-run   Print steps without changing the system"
+    echo "  --yes, -y   Skip confirmation prompts"
+    echo "  --help, -h  Show this help"
+    exit 0
 }
 
-log "Starting Bangla Font Setup..."
+# 2. Pre-flight guards
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --dry-run) DRY_RUN=true ;;
+            --yes|-y)  ASSUME_YES=true ;;
+            --help|-h) usage ;;
+            *) die "Unknown argument: $1 (try --help)" ;;
+        esac
+        shift
+    done
+}
 
-# 1. Install Google Noto Bengali Fonts via DNF
-log "Installing Noto Bengali packages from Fedora repositories..."
-sudo dnf install -y \
-  google-noto-sans-bengali-fonts \
-  google-noto-sans-bengali-ui-fonts \
-  google-noto-serif-bengali-fonts
+# 3. Steps
+step_fonts() {
+    log "Installing Noto Bengali packages..."
+    run sudo dnf install -y "${FONT_PACKAGES[@]}"
+}
 
-# 2. Generate Fontconfig Setup for UI & Document Fallbacks
-log "Creating local font configuration (~/.config/fontconfig/fonts.conf)..."
-mkdir -p "$HOME/.config/fontconfig"
-
-cat << 'EOF' > "$HOME/.config/fontconfig/fonts.conf"
+step_fontconfig() {
+    log "Configuring fontconfig fallback ($FONTCONF_FILE)..."
+    if $DRY_RUN; then
+        run mkdir -p "$FONTCONF_DIR"
+        return 0
+    fi
+    mkdir -p "$FONTCONF_DIR"
+    cat > "$FONTCONF_FILE" <<'EOF'
 <?xml version="1.0"?>
 <!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
 <fontconfig>
-    <!-- Sans-Serif & System UI Fallback -->
     <match target="pattern">
         <test qual="any" name="family"><string>sans-serif</string></test>
         <edit name="family" mode="prepend" binding="strong">
@@ -40,8 +84,6 @@ cat << 'EOF' > "$HOME/.config/fontconfig/fonts.conf"
             <string>Noto Sans Bengali</string>
         </edit>
     </match>
-
-    <!-- Serif Fallback -->
     <match target="pattern">
         <test qual="any" name="family"><string>serif</string></test>
         <edit name="family" mode="prepend" binding="strong">
@@ -50,10 +92,22 @@ cat << 'EOF' > "$HOME/.config/fontconfig/fonts.conf"
     </match>
 </fontconfig>
 EOF
+    ok "Fontconfig written"
+}
 
-# 3. Rebuild Font Cache
-log "Updating font cache..."
-fc-cache -fv
+step_cache() {
+    log "Rebuilding font cache..."
+    run fc-cache -fv
+}
 
-echo ""
-success "Bangla font setup complete! Restart your browser to apply changes."
+# 4. Main
+main() {
+    parse_args "$@"
+    log "Installing Bangla fonts..."
+    step_fonts
+    step_fontconfig
+    step_cache
+    ok "Setup complete. Restart the browser."
+}
+
+main "$@"
