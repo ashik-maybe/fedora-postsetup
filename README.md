@@ -17,14 +17,14 @@ multimedia codecs. It optimizes DNF. Run it first.
 | --- | --- | --- |
 | `fedora-postinstall.sh` | Baseline setup, codecs, RPM Fusion | root |
 | `setup-intel-drivers.sh` | Intel VA-API, OpenCL, Vulkan, thermald | root |
-| `add_gnome-extensions.sh` | Install 3 GNOME Shell extensions | GNOME |
+| `add_gnome-extensions.sh` | Install 3 GNOME Shell extensions | GNOME, `sudo` for dnf |
 | `remove-gnome-packages.sh` | Remove unused GNOME packages. Destructive. | `sudo` |
 | `scripts/setup-virtualization.sh` | Install Virt-Manager and KVM. Use `--remove` to remove. | `sudo` |
 | `scripts/setup-cloudflare-warp-wireguard.sh` | Install Cloudflare WARP. Use `--remove` to remove. | `sudo` |
 | `scripts/setup-appimage-manager.sh` | Install Gear Lever and FUSE support | `sudo` for dnf |
 | `scripts/browsers/install-brave-browser.sh` | Install Brave Browser | `sudo` for dnf |
 | `scripts/browsers/install-google-chrome.sh` | Install Google Chrome | `sudo` for dnf |
-| `scripts/tools/setup-git-config.sh` | Install Git, SSH key, and commit signing | user |
+| `scripts/tools/setup-git-config.sh` | Install Git, SSH key, and commit signing | user (sudo only if git is missing) |
 | `scripts/tools/install-vscodium.sh` | Install VSCodium. Validates repo first. | `sudo` for dnf |
 | `scripts/tools/install-cursor.sh` | Install Cursor IDE from the official repo | `sudo` for dnf |
 | `scripts/tools/install-obsidian.sh` | Install Obsidian from the kmf COPR | `sudo` for dnf, COPR |
