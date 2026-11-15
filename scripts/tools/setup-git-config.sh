@@ -111,6 +111,7 @@ step_git() {
     if command -v git &>/dev/null; then
         skip "Git already installed ($(git --version))"
     else
+        $DRY_RUN || sudo -v || die "Sudo required to install git."
         run sudo dnf install -y git
         ok "Git installed"
     fi

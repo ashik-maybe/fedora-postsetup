@@ -63,12 +63,21 @@ parse_args() {
     done
 }
 
+require_sudo() {
+    if $DRY_RUN; then
+        warn "Dry-run: skip sudo check"
+        return 0
+    fi
+    sudo -v || die "Sudo required."
+}
+
 # 3. Steps
 step_check() {
     if command -v brave-browser &>/dev/null; then
         ok "brave-browser is already installed."
         exit 0
     fi
+    require_sudo
     confirm
 }
 

@@ -13,7 +13,6 @@ set -euo pipefail
 IFS=$'\n\t'
 
 # 0. Config
-readonly REPO_PATH="/etc/yum.repos.d/google-chrome.repo"
 readonly RPM_URL="https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm"
 
 DRY_RUN=false
@@ -72,12 +71,21 @@ parse_args() {
     done
 }
 
+require_sudo() {
+    if $DRY_RUN; then
+        warn "Dry-run: skip sudo check"
+        return 0
+    fi
+    sudo -v || die "Sudo required."
+}
+
 # 3. Steps
 step_check() {
     if command -v google-chrome &>/dev/null; then
         ok "google-chrome is already installed."
         exit 0
     fi
+    require_sudo
     confirm
 }
 
