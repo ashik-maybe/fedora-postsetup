@@ -28,6 +28,7 @@ multimedia codecs. It optimizes DNF. Run it first.
 | `scripts/dev-tools/setup-git-config.sh` | Install Git, SSH key, and commit signing | user |
 | `scripts/dev-tools/install-vscodium.sh` | Install VSCodium. Validates repo first. | `sudo` for dnf |
 | `scripts/dev-tools/install-cursor.sh` | Install Cursor IDE from the official repo | `sudo` for dnf |
+| `scripts/dev-tools/setup-dev-tools.sh` | Install dev CLI tools in tiers. Use `--power`, `--build`, `--all` to add tiers. | `sudo` for dnf |
 
 Each script accepts `--dry-run` (no changes) and `--yes` (no prompts).
 Each script is independent. Run it alone. Safe to re-run.
