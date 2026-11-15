@@ -25,7 +25,7 @@ DRY_RUN=false
 ASSUME_YES=false
 
 # 1. Helpers
-GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[0;33m'; RED='\033[0;31m'; CYAN='\033[0;36m'; NC='\033[0m'
+GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[0;33m'; RED='\033[0;31m'; NC='\033[0m'
 log()     { echo -e "${BLUE}[INFO]${NC} $1"; }
 ok()      { echo -e "${GREEN}[OK]${NC} $1"; }
 warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
@@ -94,10 +94,9 @@ step_remove() {
         if rpm -q "$pkg" &>/dev/null; then
             run sudo dnf remove -y "$pkg"
         else
-            log "  – $pkg not installed, skipping"
+            log "  - $pkg not installed, skipping"
         fi
     done
-    ok "Packages removed"
 }
 
 step_cleanup() {
