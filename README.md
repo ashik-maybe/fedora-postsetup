@@ -25,10 +25,12 @@ multimedia codecs. It optimizes DNF. Run it first.
 | `scripts/browsers/install-brave-browser.sh` | Install Brave Browser | `sudo` for dnf |
 | `scripts/browsers/install-google-chrome.sh` | Install Google Chrome | `sudo` for dnf |
 | `scripts/patch/setup-bangla-fonts.sh` | Install Noto Bengali fonts | `sudo` for dnf |
-| `scripts/dev-tools/setup-git-config.sh` | Install Git, SSH key, and commit signing | user |
-| `scripts/dev-tools/install-vscodium.sh` | Install VSCodium. Validates repo first. | `sudo` for dnf |
-| `scripts/dev-tools/install-cursor.sh` | Install Cursor IDE from the official repo | `sudo` for dnf |
-| `scripts/dev-tools/setup-dev-tools.sh` | Install dev CLI tools in tiers. Use `--power`, `--build`, `--all` to add tiers. | `sudo` for dnf |
+| `scripts/tools/setup-git-config.sh` | Install Git, SSH key, and commit signing | user |
+| `scripts/tools/install-vscodium.sh` | Install VSCodium. Validates repo first. | `sudo` for dnf |
+| `scripts/tools/install-cursor.sh` | Install Cursor IDE from the official repo | `sudo` for dnf |
+| `scripts/tools/install-obsidian.sh` | Install Obsidian from the kmf COPR | `sudo` for dnf, COPR |
+| `scripts/tools/install-ghostty.sh` | Install Ghostty from the scottames COPR | `sudo` for dnf, COPR |
+| `scripts/tools/setup-dev-tools.sh` | Install dev CLI tools in tiers. Use `--power`, `--build`, `--all` to add tiers. | `sudo` for dnf |
 
 Each script accepts `--dry-run` (no changes) and `--yes` (no prompts).
 Each script is independent. Run it alone. Safe to re-run.
