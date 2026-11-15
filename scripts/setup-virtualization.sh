@@ -30,122 +30,122 @@ log() { echo -e "${BLUE}[INFO]${NC} $1"; }
 ok() { echo -e "${GREEN}[OK]${NC} $1"; }
 warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 die() {
-	echo -e "${RED}[ERROR]${NC} $1" >&2
-	exit 1
+    echo -e "${RED}[ERROR]${NC} $1" >&2
+    exit 1
 }
 
 run() {
-	local IFS=' '
-	log "→ $*"
-	if $DRY_RUN; then return 0; fi
-	"$@"
+    local IFS=' '
+    log "→ $*"
+    if $DRY_RUN; then return 0; fi
+    "$@"
 }
 
 usage() {
-	sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'
-	echo ""
-	echo "Options:"
-	echo "  --remove, -r  Remove virtualization instead of installing"
-	echo "  --dry-run     Print steps without changing the system"
-	echo "  --yes, -y     Skip confirmation prompts"
-	echo "  --help, -h    Show this help"
-	exit 0
+    sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'
+    echo ""
+    echo "Options:"
+    echo "  --remove, -r  Remove virtualization instead of installing"
+    echo "  --dry-run     Print steps without changing the system"
+    echo "  --yes, -y     Skip confirmation prompts"
+    echo "  --help, -h    Show this help"
+    exit 0
 }
 
 confirm() {
-	if $ASSUME_YES || $DRY_RUN; then return 0; fi
-	local reply
-	read -rp "Proceed? (y/N): " -n 1 reply || true
-	echo ""
-	[[ "$reply" =~ ^[Yy]$ ]] || {
-		warn "Cancelled."
-		exit 2
-	}
+    if $ASSUME_YES || $DRY_RUN; then return 0; fi
+    local reply
+    read -rp "Proceed? (y/N): " -n 1 reply || true
+    echo ""
+    [[ "$reply" =~ ^[Yy]$ ]] || {
+        warn "Cancelled."
+        exit 2
+    }
 }
 
 # 2. Pre-flight guards
 parse_args() {
-	while [[ $# -gt 0 ]]; do
-		case "$1" in
-		--remove | -r) REMOVE_MODE=true ;;
-		--dry-run) DRY_RUN=true ;;
-		--yes | -y) ASSUME_YES=true ;;
-		--help | -h) usage ;;
-		*) die "Unknown argument: $1 (try --help)" ;;
-		esac
-		shift
-	done
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+        --remove | -r) REMOVE_MODE=true ;;
+        --dry-run) DRY_RUN=true ;;
+        --yes | -y) ASSUME_YES=true ;;
+        --help | -h) usage ;;
+        *) die "Unknown argument: $1 (try --help)" ;;
+        esac
+        shift
+    done
 }
 
 require_sudo() {
-	if $DRY_RUN; then
-		warn "Dry-run: skip sudo check"
-		return 0
-	fi
-	sudo -v || die "Sudo required."
+    if $DRY_RUN; then
+        warn "Dry-run: skip sudo check"
+        return 0
+    fi
+    sudo -v || die "Sudo required."
 }
 
 # 3. Steps
 step_install() {
-	log "Installing Virt-Manager, QEMU, and KVM..."
-	run sudo dnf install -y "$GROUP_NAME"
-	ok "Virtualization packages installed"
+    log "Installing Virt-Manager, QEMU, and KVM..."
+    run sudo dnf install -y "$GROUP_NAME"
+    ok "Virtualization packages installed"
 }
 
 step_enable() {
-	log "Enabling and starting libvirtd..."
-	run sudo systemctl enable --now libvirtd
-	ok "libvirtd active and enabled at boot"
+    log "Enabling and starting libvirtd..."
+    run sudo systemctl enable --now libvirtd
+    ok "libvirtd active and enabled at boot"
 }
 
 step_user_group() {
-	log "Checking '$USER' in libvirt group..."
-	if id -nG "$USER" 2>/dev/null | grep -qw libvirt; then
-		ok "User already in libvirt group"
-	else
-		run sudo usermod -aG libvirt "$USER"
-		warn "Log out and back in."
-	fi
+    log "Checking '$USER' in libvirt group..."
+    if id -nG "$USER" 2>/dev/null | grep -qw libvirt; then
+        ok "User already in libvirt group"
+    else
+        run sudo usermod -aG libvirt "$USER"
+        warn "Log out and back in."
+    fi
 }
 
 step_remove() {
-	log "Stopping and disabling libvirtd..."
-	local svc
-	for svc in "${LIBVIRT_SOCKETS[@]}"; do
-		if $DRY_RUN; then
-			run sudo systemctl stop "$svc"
-			run sudo systemctl disable "$svc"
-		else
-			sudo systemctl stop "$svc" 2>/dev/null || warn "Could not stop $svc (may be absent)."
-			sudo systemctl disable "$svc" 2>/dev/null || warn "Could not disable $svc (may be absent)."
-		fi
-	done
-	local target_user="${SUDO_USER:-$USER}"
-	if id -nG "$target_user" 2>/dev/null | grep -qw libvirt; then
-		run sudo gpasswd -d "$target_user" libvirt
-	else
-		log "User '$target_user' is not in the libvirt group"
-	fi
-	log "Removing virtualization packages..."
-	run sudo dnf remove -y "$GROUP_NAME"
-	warn "VM images in /var/lib/libvirt/ and ~/.config/libvirt/ were kept."
+    log "Stopping and disabling libvirtd..."
+    local svc
+    for svc in "${LIBVIRT_SOCKETS[@]}"; do
+        if $DRY_RUN; then
+            run sudo systemctl stop "$svc"
+            run sudo systemctl disable "$svc"
+        else
+            sudo systemctl stop "$svc" 2>/dev/null || warn "Could not stop $svc (may be absent)."
+            sudo systemctl disable "$svc" 2>/dev/null || warn "Could not disable $svc (may be absent)."
+        fi
+    done
+    local target_user="${SUDO_USER:-$USER}"
+    if id -nG "$target_user" 2>/dev/null | grep -qw libvirt; then
+        run sudo gpasswd -d "$target_user" libvirt
+    else
+        log "User '$target_user' is not in the libvirt group"
+    fi
+    log "Removing virtualization packages..."
+    run sudo dnf remove -y "$GROUP_NAME"
+    warn "VM images in /var/lib/libvirt/ and ~/.config/libvirt/ were kept."
 }
 
 # 4. Main
 main() {
-	parse_args "$@"
-	require_sudo
-	if $REMOVE_MODE; then
-		confirm
-		step_remove
-		ok "Removal complete."
-	else
-		step_install
-		step_enable
-		step_user_group
-		ok "Setup complete."
-		warn "Log out and back in."
-	fi
+    parse_args "$@"
+    require_sudo
+    if $REMOVE_MODE; then
+        confirm
+        step_remove
+        ok "Removal complete."
+    else
+        step_install
+        step_enable
+        step_user_group
+        ok "Setup complete."
+        warn "Log out and back in."
+    fi
 }
 
 main "$@"
