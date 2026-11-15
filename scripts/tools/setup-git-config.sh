@@ -64,14 +64,6 @@ EOF
 	exit 0
 }
 
-confirm_or_skip() {
-	local prompt="${1:-Proceed?} [Y/n]: "
-	local reply
-	read -p "$prompt" -n 1 -r reply || true
-	echo
-	[[ "$reply" =~ ^[Nn]$ ]] && return 1 || return 0
-}
-
 # 2. Pre-flight guards
 parse_args() {
 	while [[ $# -gt 0 ]]; do
