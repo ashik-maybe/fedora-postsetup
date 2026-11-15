@@ -114,7 +114,11 @@ main() {
     step_remove
     step_cleanup
     echo ""
-    ok "Packages removed."
+    if $DRY_RUN; then
+        ok "Dry-run complete: nothing was removed."
+    else
+        ok "Packages removed."
+    fi
     log "Kept: GNOME Shell, Nautilus, Terminal, Settings."
 }
 
