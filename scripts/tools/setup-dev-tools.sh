@@ -2,14 +2,10 @@
 
 # setup-dev-tools.sh — Install developer CLI tools on Fedora 44+ (pure dnf).
 #
-# Three tiers, all from the official Fedora repositories:
-#   core    The everyday modern CLI core (installed by default)
-#   power   Web/API, YAML, benchmarks, docs, better diffs (--power)
-#   build   Compilers, build systems, debuggers, language runtimes (--build)
-#
 # Usage:
 #   ./setup-dev-tools.sh [--power] [--build] [--all] [--dry-run] [--yes] [--help]
 #
+# Tiers: core (everyday CLI, default) · power (--power) · build (--build) · all (--all)
 # Exit codes: 0 ok · 1 error · 2 aborted
 # Idempotent: dnf skips already-installed packages; safe to re-run.
 
@@ -59,7 +55,7 @@ RED="\e[31m"
 RESET="\e[0m"
 banner() { echo -e "\n${BLUE}==> $1${RESET}"; }
 ok() { echo -e "${GREEN}[OK]${RESET} $1"; }
-info() { echo -e "${YELLOW}[INFO]${RESET} $1"; }
+log()   { echo -e "${BLUE}[INFO]${RESET} $1"; }
 warn() { echo -e "${YELLOW}[!]${RESET} $1"; }
 die() {
     echo -e "${RED}[ERROR]${RESET} $1" >&2
@@ -68,27 +64,13 @@ die() {
 
 run() {
     local IFS=' '
-    info "→ $*"
+    log "→ $*"
     if $DRY_RUN; then return 0; fi
     "$@"
 }
 
 usage() {
-    cat <<EOF
-Usage: $(basename "$0") [OPTIONS]
-
-Install developer CLI tools from the official Fedora repositories.
-
-Options:
-  --power     Add the power tier (httpie, yq, hyperfine, git-delta, ...)
-  --build     Add the build tier (gcc, cmake, rust, golang, nodejs, ...)
-  --all       Install every tier
-  --dry-run   Print the packages without changing the system
-  --yes, -y   Skip the confirmation prompt
-  --help, -h  Show this help
-
-The default installs the core tier only.
-EOF
+    sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'
     exit 0
 }
 
@@ -97,7 +79,7 @@ confirm_or_abort() {
     read -p "$1 [Y/n]: " -n 1 -r reply || true
     echo
     [[ "$reply" =~ ^[Nn]$ ]] && {
-        info "Aborted."
+        log "Aborted."
         exit 2
     }
     return 0
@@ -125,9 +107,13 @@ require_fedora() {
 }
 
 require_sudo() {
-    $DRY_RUN && return 0
-    command -v sudo >/dev/null ||
-        die "sudo is required (this script installs packages)"
+    if $DRY_RUN; then
+        warn "Dry-run: skip sudo check"
+        return 0
+    fi
+    if [[ $EUID -ne 0 ]]; then
+        sudo -v || die "Sudo required."
+    fi
 }
 
 # 3. Steps
@@ -154,7 +140,7 @@ step_install() {
     if [[ $EUID -ne 0 ]]; then sudo=(sudo); fi
     run "${sudo[@]}" dnf install -y "${SELECTED[@]}"
     $DRY_RUN && {
-        info "Dry-run: nothing installed"
+        log "Dry-run: nothing installed"
         return 0
     }
     ok "dnf finished for ${#SELECTED[@]} packages"
@@ -163,7 +149,7 @@ step_install() {
 step_verify() {
     banner "Verify"
     $DRY_RUN && {
-        info "Dry-run: verify skipped"
+        log "Dry-run: verify skipped"
         return 0
     }
     local pkg bin missing=0
