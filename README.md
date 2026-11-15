@@ -31,7 +31,8 @@ multimedia codecs. It optimizes DNF. Run it first.
 | `scripts/tools/install-ghostty.sh` | Install Ghostty from the scottames COPR | `sudo` for dnf, COPR |
 | `scripts/tools/setup-dev-tools.sh` | Install dev CLI tools in tiers. Use `--power`, `--build`, `--all` to add tiers. | `sudo` for dnf |
 
-Each script accepts `--dry-run` (no changes) and `--yes` (no prompts).
+Each script accepts `--dry-run` (no changes). Scripts that ask for
+confirmation also accept `--yes` (no prompts).
 Each script is independent. Run it alone. Safe to re-run.
 
 ## Download to ~/bin
