@@ -24,7 +24,6 @@ multimedia codecs. It optimizes DNF. Run it first.
 | `scripts/setup-appimage-manager.sh` | Install Gear Lever and FUSE support | `sudo` for dnf |
 | `scripts/browsers/install-brave-browser.sh` | Install Brave Browser | `sudo` for dnf |
 | `scripts/browsers/install-google-chrome.sh` | Install Google Chrome | `sudo` for dnf |
-| `scripts/patch/setup-bangla-fonts.sh` | Install Noto Bengali fonts | `sudo` for dnf |
 | `scripts/tools/setup-git-config.sh` | Install Git, SSH key, and commit signing | user |
 | `scripts/tools/install-vscodium.sh` | Install VSCodium. Validates repo first. | `sudo` for dnf |
 | `scripts/tools/install-cursor.sh` | Install Cursor IDE from the official repo | `sudo` for dnf |
