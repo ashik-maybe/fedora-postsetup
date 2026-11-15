@@ -4,7 +4,7 @@
 # Use for Intel HD 520 and newer.
 #
 # Usage:
-#   sudo ./setup-intel-drivers.sh [--dry-run] [--yes] [--help]
+#   sudo ./setup-intel-drivers.sh [--dry-run] [--help]
 #
 # Exit codes: 0 ok · 1 error · 2 aborted
 # Idempotent: safe to re-run. Must run as root (except --dry-run).
@@ -21,7 +21,6 @@ readonly PROFILE_FILE="/etc/profile.d/intel-media.sh"
 readonly VAAPI_EXPORT="LIBVA_DRIVER_NAME=iHD"
 
 DRY_RUN=false
-ASSUME_YES=false
 
 # 1. Helpers
 GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[0;33m'; RED='\033[0;31m'; NC='\033[0m'
@@ -42,7 +41,6 @@ usage() {
     echo ""
     echo "Options:"
     echo "  --dry-run   Print steps without changing the system"
-    echo "  --yes, -y   Skip confirmation prompts"
     echo "  --help, -h  Show this help"
     exit 0
 }
@@ -52,7 +50,6 @@ parse_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --dry-run) DRY_RUN=true ;;
-            --yes|-y)  ASSUME_YES=true ;;
             --help|-h) usage ;;
             *) die "Unknown argument: $1 (try --help)" ;;
         esac
@@ -66,6 +63,10 @@ require_root() {
 }
 
 check_intel_gpu() {
+    if ! command -v lspci >/dev/null 2>&1; then
+        warn "lspci not found; skipping Intel GPU detection."
+        return 0
+    fi
     if lspci 2>/dev/null | grep -iE "vga|3d|display" | grep -qi "intel"; then
         ok "Intel GPU detected"
     else
@@ -84,17 +85,23 @@ step_env() {
     if grep -qxF "$VAAPI_EXPORT" "$ENV_FILE" 2>/dev/null; then
         log "$VAAPI_EXPORT already in $ENV_FILE"
     else
-        run bash -c "printf '%s\n' '$VAAPI_EXPORT' >> '$ENV_FILE'"
+        log "→ printf '%s\\n' '$VAAPI_EXPORT' >> '$ENV_FILE'"
+        if ! $DRY_RUN; then
+            printf '%s\n' "$VAAPI_EXPORT" >> "$ENV_FILE"
+        fi
         ok "Set $VAAPI_EXPORT in $ENV_FILE"
     fi
     if [[ -f "$PROFILE_FILE" ]]; then
         log "$PROFILE_FILE already exists"
     else
-        run bash -c "cat > '$PROFILE_FILE' <<'EOF'
+        log "→ create $PROFILE_FILE"
+        if ! $DRY_RUN; then
+            cat > "$PROFILE_FILE" <<EOF
 # Intel Media Driver Configuration
 export $VAAPI_EXPORT
-EOF"
-        run chmod 644 "$PROFILE_FILE"
+EOF
+            chmod 644 "$PROFILE_FILE"
+        fi
         ok "Created $PROFILE_FILE"
     fi
 }
