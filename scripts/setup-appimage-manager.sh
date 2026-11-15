@@ -15,13 +15,11 @@ IFS=$'\n\t'
 # 0. Config
 readonly GEAR_LEVER_ID="it.mijorus.gearlever"
 readonly FLATHUB_REPO="https://dl.flathub.org/repo/flathub.flatpakrepo"
-readonly FUSE_PKGS=(fuse fuse-libs libfuse3)
+readonly FUSE_PKGS=(fuse fuse-libs fuse3 fuse3-libs)
 
 DRY_RUN=false
-ASSUME_YES=false
 
 # 1. Helpers
-GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[0;33m'; RED='\033[0;31m'; CYAN='\033[0;36m'; NC='\033[0m'
 log()     { echo -e "${BLUE}[INFO]${NC} $1"; }
 ok()      { echo -e "${GREEN}[OK]${NC} $1"; }
 warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
@@ -39,7 +37,6 @@ usage() {
     echo ""
     echo "Options:"
     echo "  --dry-run   Print steps without changing the system"
-    echo "  --yes, -y   Skip confirmation prompts"
     echo "  --help, -h  Show this help"
     exit 0
 }
@@ -49,7 +46,6 @@ parse_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --dry-run) DRY_RUN=true ;;
-            --yes|-y)  ASSUME_YES=true ;;
             --help|-h) usage ;;
             *) die "Unknown argument: $1 (try --help)" ;;
         esac
