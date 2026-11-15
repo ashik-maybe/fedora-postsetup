@@ -4,7 +4,7 @@
 # Gear Lever (Flatpak) manages AppImages; fuse2 + fuse3 give them a filesystem.
 #
 # Usage:
-#   ./setup-appimage-manager.sh [--dry-run] [--yes] [--help]
+#   ./setup-appimage-manager.sh [--dry-run] [--help]
 #
 # Exit codes: 0 ok · 1 error · 2 aborted
 # Idempotent: safe to re-run. User-level script (uses sudo only for dnf).
