@@ -3,7 +3,7 @@
 # add_gnome-extensions.sh — Install GNOME Shell extensions (Fedora 44+, GNOME 50+, Wayland)
 #
 # Usage:
-#   ./add_gnome-extensions.sh [--dry-run] [--yes] [--help]
+#   ./add_gnome-extensions.sh [--dry-run] [--help]
 #
 # Exit codes: 0 ok · 1 error · 2 aborted
 # Idempotent: safe to re-run. Extensions are installed but NOT auto-enabled
@@ -14,21 +14,15 @@ IFS=$'\n\t'
 
 # 0. Config
 readonly EXTENSIONS=(
-    "gnome-shell-extension-appindicator"  # Tray icons
-    "gnome-shell-extension-dash-to-dock"  # Customizable dock
-    "gnome-shell-extension-caffeine"      # Disable screen blanking/suspend
-)
-readonly EXTENSION_UUIDS=(
-    "appindicatorsupport@rgcjonas.gmail.com"
-    "dash-to-dock@micxgx.gmail.com"
-    "caffeine@patapon.info"
+    "gnome-shell-extension-appindicator|appindicatorsupport@rgcjonas.gmail.com|Tray icons"
+    "gnome-shell-extension-dash-to-dock|dash-to-dock@micxgx.gmail.com|Customizable dock"
+    "gnome-shell-extension-caffeine|caffeine@patapon.info|Disable screen blanking/suspend"
 )
 
 DRY_RUN=false
-ASSUME_YES=false
 
 # 1. Helpers
-GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[0;33m'; RED='\033[0;31m'; CYAN='\033[0;36m'; NC='\033[0m'
+GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[0;33m'; RED='\033[0;31m'; NC='\033[0m'
 log()     { echo -e "${BLUE}[INFO]${NC} $1"; }
 ok()      { echo -e "${GREEN}[OK]${NC} $1"; }
 warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
@@ -46,7 +40,6 @@ usage() {
     echo ""
     echo "Options:"
     echo "  --dry-run   Print steps without changing the system"
-    echo "  --yes, -y   Skip confirmation prompts"
     echo "  --help, -h  Show this help"
     exit 0
 }
@@ -56,7 +49,6 @@ parse_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --dry-run) DRY_RUN=true ;;
-            --yes|-y)  ASSUME_YES=true ;;
             --help|-h) usage ;;
             *) die "Unknown argument: $1 (try --help)" ;;
         esac
@@ -82,8 +74,9 @@ require_sudo() {
 # 3. Steps
 step_install() {
     log "Installing GNOME Shell extensions..."
-    local pkg
-    for pkg in "${EXTENSIONS[@]}"; do
+    local record pkg
+    for record in "${EXTENSIONS[@]}"; do
+        pkg="${record%%|*}"
         if $DRY_RUN; then
             run sudo dnf install -y "$pkg"
             continue
@@ -102,7 +95,9 @@ step_install() {
 step_summary() {
     log "Enable these extensions:"
     local uuid
-    for uuid in "${EXTENSION_UUIDS[@]}"; do
+    for record in "${EXTENSIONS[@]}"; do
+        local uuid
+        uuid="${record#*|}"; uuid="${uuid%%|*}"
         echo "  gnome-extensions enable $uuid"
     done
     echo ""
