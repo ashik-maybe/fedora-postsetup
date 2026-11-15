@@ -20,6 +20,7 @@ readonly FUSE_PKGS=(fuse fuse-libs fuse3 fuse3-libs)
 DRY_RUN=false
 
 # 1. Helpers
+GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[0;33m'; RED='\033[0;31m'; NC='\033[0m'
 log()     { echo -e "${BLUE}[INFO]${NC} $1"; }
 ok()      { echo -e "${GREEN}[OK]${NC} $1"; }
 warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
