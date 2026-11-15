@@ -5,7 +5,7 @@
 # Usage:
 #   ./install-cursor.sh [--dry-run] [--yes] [--help]
 #
-# Exit codes: 0 ok, 1 error, 2 aborted.
+# Exit codes: 0 ok · 1 error · 2 aborted
 # Safe to re-run. Uses the official Anysphere repo.
 
 set -euo pipefail

@@ -7,7 +7,8 @@
 #   ./setup-cloudflare-warp-wireguard.sh [--dry-run] [--yes] [--help]
 #   ./setup-cloudflare-warp-wireguard.sh --remove [-r] [--dry-run] [--yes]
 #
-# Exit codes: 0 ok, 1 error, 2 aborted. Safe to re-run.
+# Exit codes: 0 ok · 1 error · 2 aborted
+# Idempotent: safe to re-run.
 
 set -euo pipefail
 IFS=$'\n\t'

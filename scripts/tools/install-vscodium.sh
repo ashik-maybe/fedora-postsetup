@@ -5,7 +5,7 @@
 # Usage:
 #   ./install-vscodium.sh [--dry-run] [--yes] [--help]
 #
-# Exit codes: 0 ok, 1 error, 2 aborted.
+# Exit codes: 0 ok · 1 error · 2 aborted
 # Safe to re-run. Validates repo metadata before install.
 
 set -euo pipefail
