@@ -48,7 +48,7 @@ confirm() {
     if $ASSUME_YES || $DRY_RUN; then return 0; fi
     local reply
     read -rp "Install cursor now? (y/n): " reply || true
-    [[ "$reply" == "y" ]] || { warn "Installation aborted."; exit 2; }
+    [[ "${reply,,}" == "y" ]] || { warn "Installation aborted."; exit 2; }
 }
 
 # 2. Pre-flight guards
