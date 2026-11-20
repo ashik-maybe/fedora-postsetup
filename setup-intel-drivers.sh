@@ -13,7 +13,7 @@ set -euo pipefail
 IFS=$'\n\t'
 
 # 0. Config
-readonly VAAPI_PKGS=(intel-media-driver libva-intel-driver libva libva-utils)
+readonly VAAPI_PKGS=(libva-intel-media-driver libva libva-utils)
 readonly COMPUTE_PKGS=(intel-opencl intel-mediasdk)
 readonly VULKAN_PKGS=(mesa-vulkan-drivers vulkan-tools)
 readonly ENV_FILE="/etc/environment"
@@ -118,7 +118,7 @@ step_vulkan() {
 
 step_monitoring() {
     log "Installing Intel GPU monitoring tools..."
-    run dnf install -y intel-gpu-tools
+    run dnf install -y igt-gpu-tools
 }
 
 step_thermald() {
