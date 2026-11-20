@@ -99,11 +99,12 @@ step_enable() {
 }
 
 step_user_group() {
-    log "Checking '$USER' in libvirt group..."
-    if id -nG "$USER" 2>/dev/null | grep -qw libvirt; then
+    local target_user="${SUDO_USER:-$USER}"
+    log "Checking '$target_user' in libvirt group..."
+    if id -nG "$target_user" 2>/dev/null | grep -qw libvirt; then
         ok "User already in libvirt group"
     else
-        run sudo usermod -aG libvirt "$USER"
+        run sudo usermod -aG libvirt "$target_user"
         warn "Log out and back in."
     fi
 }
