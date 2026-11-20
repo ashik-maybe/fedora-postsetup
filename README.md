@@ -42,6 +42,13 @@ No scripts install this tool. Download it by hand. Put it in `~/bin`.
 
 - [FFmpeg Static Builds](https://johnvansickle.com/ffmpeg/) — FFmpeg without dnf
 
+---
+### fedora copr repos that might be helpful
+- [Ghostty](https://copr.fedorainfracloud.org/coprs/scottames/ghostty/)
+- [Helium for Linux](https://copr.fedorainfracloud.org/coprs/imput/helium)
+- [Obsidian.md](https://copr.fedorainfracloud.org/coprs/kmf/Obsidian/)
+---
+
 ## Notes
 
 - Scripts target Fedora 44 and newer.
